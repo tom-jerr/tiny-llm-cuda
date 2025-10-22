@@ -1,0 +1,42 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+[project]
+name = "tinyllm"
+version = "0.1.0"
+description = "a lightweight vLLM implementation built from scratch"
+authors = [{ name = "lzy", email = "tomlzy213@gmail.com" }]
+requires-python = ">=3.10,<3.13"
+readme = "README.md"
+license = "MIT"
+dependencies = [
+    "torch>=2.6.0",
+    "triton>=3.0.0",
+    "transformers>=4.51.0",
+    "xxhash",
+    "numpy>=2.2.4",
+    "accelerate>=1.11.0",
+]
+
+
+# 将仅用于开发的依赖项分组
+[tool.pdm.dev-dependencies]
+dev = ["pytest>=8.3.5", "pytest-benchmark>=5.1.0", "ruff>=0.11.6"]
+
+# 简化脚本，只保留当前项目可用的命令
+[tool.pdm.scripts]
+build-ext = "python src/extensions/setup.py build_ext --inplace"
+build-ext-test = "python src/extensions/test.py"
+clean-ext = "rm -rf src/extensions/build"
+main = "python main.py"
+main-v1 = "python main.py --loader v1"
+main-v2 = "python main.py --loader v2"
+batch-main = "python batch-main.py"
+test = "python scripts/dev-tools.py test"
+bench = "pytest benches"
+format = "ruff format"
+format-cpp = "bash -c \"find src/extensions -type file \\( -name '*.h' -or -name '*.cpp' \\) | xargs -n1 clang-format -i\""
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+pythonpath = "."
