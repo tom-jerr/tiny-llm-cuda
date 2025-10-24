@@ -1,19 +1,16 @@
 import torch
 from typing import Callable
 from transformers import PreTrainedTokenizer
-
-from .qwen2 import Qwen2Modelv1
-
-# from .qwen2 import Qwen2Modelv2
+from .kv_cache import TinyKvFullCache
+from .qwen2 import Qwen2ModelV1, Qwen2ModelV2
 
 
 def simple_generate(
-    model: Qwen2Modelv1,
+    model: Qwen2ModelV1,
     tokenizer: PreTrainedTokenizer,
     prompt: str,
     sampler: Callable[[torch.Tensor], torch.Tensor] | None = None,
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
-    max_new_tokens: int = 128,
 ) -> str:
     """
     Simple autoregressive text generation using greedy decoding.
@@ -31,16 +28,6 @@ def simple_generate(
     """
 
     def _step(model, y):
-        """
-        Single generation step.
-
-        Args:
-            model: The language model
-            y: Input token IDs of shape (N, S) where N=1 (batch size) and S=sequence length
-
-        Returns:
-            Next token ID of shape (N, 1)
-        """
         # Forward pass through model: y (N, S) -> output_logits (N, S, vocab_size)
         output_logits = model(y)
         logits = output_logits[:, -1, :]  # (N, S, vocab_size) -> (N, vocab_size)
@@ -56,50 +43,49 @@ def simple_generate(
 
     # Setup
     model.eval().to(device)
-
     # Encode prompt
-    input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
-    generated = input_ids
-
+    tokens = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
     # Generate tokens autoregressively
     with torch.no_grad():
         while True:
-            next_token = _step(model, generated)
-            generated = torch.cat([generated, next_token], dim=-1)
+            next_token = _step(model, tokens)
+            tokens = torch.cat([tokens, next_token], dim=-1)
             if next_token.item() == tokenizer.eos_token_id:
                 break
-    return tokenizer.decode(generated[0], skip_special_tokens=True)
+    print(tokenizer.decode(tokens[0], skip_special_tokens=True))
 
 
-# def simple_generate_with_kv_cache(
-#     model: Qwen2ModelWeek2,
-#     tokenizer: PreTrainedTokenizer,
-#     prompt: str,
-#     device: str = "cuda" if torch.cuda.is_available() else "cpu",
-# ) -> str:
-#     model.eval().to(device)
-#     input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
-#     generated = input_ids
+def simple_generate_with_kv_cache(
+    model: Qwen2ModelV2,
+    tokenizer: PreTrainedTokenizer,
+    prompt: str,
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
+) -> str:
+    kv_cache = [TinyKvFullCache() for _ in range(model.num_hidden_layers)]
 
-#     with torch.no_grad():
-#         # 第一次前向传播初始化 kv_cache
-#         outputs = model(generated, use_cache=True)
-#         kv_cache = outputs.past_key_values
+    def _step(model, y, offset, cache):
+        output_logits = model(y, offset=offset, cache=cache)
+        logits = output_logits[:, -1, :]
+        logits = logits - torch.logsumexp(logits, dim=-1, keepdim=True)
+        sample = lambda x: torch.argmax(x, dim=-1, keepdim=True)
+        next_token = sample(logits)
+        return next_token
 
-#         for _ in range(128):
-#             next_token_logits = outputs.logits[:, -1, :]
-#             next_token = torch.argmax(next_token_logits, dim=-1)
-
-#             generated = torch.cat([generated, next_token.unsqueeze(-1)], dim=-1)
-
-#             if next_token.item() == tokenizer.eos_token_id:
-#                 break
-
-#             # 增量生成，使用缓存
-#             outputs = model(next_token.unsqueeze(-1), use_cache=True, past_key_values=kv_cache)
-#             kv_cache = outputs.past_key_values
-
-#     return tokenizer.decode(generated[0], skip_special_tokens=True)
+    model.eval().to(device)
+    tokens = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
+    output = tokens[0].tolist()  # (B, S), here B=1
+    offset = 0
+    with torch.no_grad():
+        while True:
+            next_token = _step(model, tokens, offset, kv_cache)
+            if next_token.item() == tokenizer.eos_token_id:
+                break
+            output.append(next_token.item())
+            # The first iteration of this loop is prefill. We want to add the offset to the prefilled token size.
+            # Otherwise, we add the decoded token size (which is always 1).
+            offset += tokens.size(-1)
+            tokens = next_token
+    print(tokenizer.decode(output, skip_special_tokens=True))
 
 
 # def speculative_generate(

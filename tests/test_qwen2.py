@@ -1,7 +1,7 @@
 import pytest
 import torch
 from .utils import *
-from .tinyllm_base import Qwen2Modelv1, EmbeddingLayer, dequantize_linear
+from .tinyllm_base import Qwen2ModelV1, EmbeddingLayer, dequantize_linear
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from src import qwen2
 
@@ -109,7 +109,7 @@ def helper_test_task_3(model_name: str, iters: int = 10):
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    model = Qwen2Modelv1(torch_model)
+    model = Qwen2ModelV1(torch_model)
 
     with torch.no_grad():
         for _ in range(iters):

@@ -117,7 +117,7 @@ class SimpleMultiHeadAttention(nn.Module):
         return linear(x, self.wo)  # (N, L, E)
 
 
-def causal_mask(L: int, S: int, dtype: torch.dtype, device: str) -> torch.Tensor:
+def causal_mask(L: int, S: int, dtype: torch.dtype, device) -> torch.Tensor:
     """
     PyTorch: 如果 S > L(即在推理阶段KV cache 累积的 key 更多),
     那么 query 只能看到前 L 个 key, 这是不正确的

@@ -5,6 +5,6 @@ from src.position_encoding import *
 from src.qwen2 import *
 from src.sampler import make_sampler
 from src.embedding import *
-from src.generate import simple_generate
+from src.generate import *
 from src.quantize import *
 from src.models import *

@@ -46,7 +46,9 @@ class RotaryEmbedding(nn.Module):
             assert (
                 len(offset) == B
             ), "Number of slices in offset list must match batch size"
-            cos_sin = torch.stack([self.cos_sin_cache[s] for s in offset], dim=0)
+            cos_sin = torch.stack([self.cos_sin_cache[s] for s in offset], dim=0).to(
+                x.device
+            )
 
         else:
             raise TypeError(f"Unsupported type for offset: {type(offset)}")

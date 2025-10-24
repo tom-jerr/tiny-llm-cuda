@@ -35,7 +35,7 @@ if args.solution == "tinyllm":
         dispatch_model,
         shortcut_name_to_full_name,
         simple_generate,
-        # simple_generate_with_kv_cache,
+        simple_generate_with_kv_cache,
         # speculative_generate,
         make_sampler,
     )
@@ -117,22 +117,12 @@ else:
     if args.loader == "v1":
         print(f"Using simple_generate for {args.model}")
         tinyllm_model = dispatch_model(args.model, model, version=1)
-        output_text = simple_generate(
-            tinyllm_model, tokenizer, prompt, sampler=sampler_fn
-        )
-        print(output_text)
+        simple_generate(tinyllm_model, tokenizer, prompt, sampler=sampler_fn)
 
-    # elif args.loader == "week2":
-    #     if draft_model is not None:
-    #         print(f"Using speculative_generate with draft model {args.draft_model}")
-    #         output_text = speculative_generate(
-    #             draft_model, model, draft_tokenizer, tokenizer, prompt
-    #         )
-    #     else:
-    #         print(f"Using simple_generate_with_kv_cache for {args.model}")
-    #         output_text = simple_generate_with_kv_cache(model, tokenizer, prompt)
-
-    #     print(output_text)
+    elif args.loader == "v2":
+        print(f"Using simple_generate_with_kv_cache for {args.model}")
+        tinyllm_model = dispatch_model(args.model, model, version=2)
+        simple_generate_with_kv_cache(tinyllm_model, tokenizer, prompt)
 
     else:
         raise ValueError(f"Loader {args.loader} not supported")

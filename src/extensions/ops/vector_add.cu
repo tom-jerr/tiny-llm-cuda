@@ -1,8 +1,7 @@
 #include "vector_add.h"
 #include <torch/extension.h>
 
-__global__ void vector_add_kernel(const float *a, const float *b, float *out,
-                                  int64_t n) {
+__global__ void vector_add_kernel(float *a, float *b, float *out, int64_t n) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < n) {
     out[idx] = a[idx] + b[idx];
