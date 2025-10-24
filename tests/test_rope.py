@@ -4,71 +4,11 @@ import numpy as np
 from typing import Tuple
 from src.position_encoding import (
     RotaryEmbedding,
+    apply_rotary_emb,
+    apply_rotary_emb_qwen2,
+    precompute_freqs_cis,
 )  # 假设你有对应的 PyTorch RotaryEmbedding 实现
 from tests.utils import *
-from torchtune.modules import RotaryPositionalEmbeddings
-
-
-# llama的实现
-def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
-    freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
-    t = torch.arange(end, device=freqs.device, dtype=torch.float32)
-    freqs = torch.outer(t, freqs)
-    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
-    return freqs_cis
-
-
-def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
-    ndim = x.ndim
-    assert 0 <= 1 < ndim
-    assert freqs_cis.shape == (x.shape[1], x.shape[-1])
-    shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
-    return freqs_cis.view(*shape)
-
-
-def apply_rotary_emb(
-    xq: torch.Tensor,
-    freqs_cis: torch.Tensor,
-) -> torch.Tensor:
-    xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
-    seq_len = xq.shape[1]
-    freqs_cis = freqs_cis[:seq_len]
-    freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
-    xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
-    return xq_out.type_as(xq)
-
-
-def apply_rotary_emb_qwen2(
-    xq: torch.Tensor,
-    freqs_cis: torch.Tensor,
-) -> torch.Tensor:
-    half_dim = xq.shape[-1] // 2
-
-    # 分为前半部分和后半部分
-    x1 = xq[..., :half_dim]  # 前半部分
-    x2 = xq[..., half_dim:]  # 后半部分
-
-    # 截取与输入序列长度匹配的频率张量
-    seq_len = xq.shape[1]
-    freqs_cis = freqs_cis[:seq_len]
-
-    # 获取 cos 和 sin 分量
-    cos_freqs = freqs_cis.real  # [seq_len, half_dim]
-    sin_freqs = freqs_cis.imag  # [seq_len, half_dim]
-
-    # reshape for broadcast: [1, seq_len, 1, half_dim]
-    cos_freqs = cos_freqs.view(1, seq_len, 1, half_dim)
-    sin_freqs = sin_freqs.view(1, seq_len, 1, half_dim)
-
-    # 应用旋转
-    # output[0:half_dim] = x1 * cos - x2 * sin
-    # output[half_dim:dim] = x1 * sin + x2 * cos
-    real = x1 * cos_freqs - x2 * sin_freqs
-    imag = x1 * sin_freqs + x2 * cos_freqs
-
-    # 重新组合
-    xq_out = torch.cat([real, imag], dim=-1)
-    return xq_out.type_as(xq)
 
 
 def RotaryEmbedding_helper(
@@ -94,24 +34,16 @@ def RotaryEmbedding_helper(
         if with_offset:
             input_pos = np.random.randint(0, MAX_SEQ_LEN - SEQ_LEN)
             input_pos_user = slice(input_pos, input_pos + SEQ_LEN)
-            input_pos_ref = torch.arange(input_pos, input_pos + SEQ_LEN, device=device)
         else:
             input_pos_user = None
-            input_pos_ref = None
             input_pos = 0
 
         freqs_cis = precompute_freqs_cis(HEAD_DIM, MAX_SEQ_LEN, BASE).to(device)
-        if input_pos > 0:
-            freqs_cis = freqs_cis[input_pos : input_pos + SEQ_LEN]
-        else:
-            freqs_cis = freqs_cis[:SEQ_LEN]
+
         if traditional:
-            ref_layer = RotaryPositionalEmbeddings(HEAD_DIM, MAX_SEQ_LEN, BASE).to(
-                device
-            )
-            reference_output = ref_layer(x, input_pos=input_pos_ref)
+            reference_output = apply_rotary_emb(x, freqs_cis, input_pos_user)
         else:
-            reference_output = apply_rotary_emb_qwen2(x, freqs_cis)
+            reference_output = apply_rotary_emb_qwen2(x, freqs_cis, input_pos_user)
 
         user_output = user_layer(x, input_pos_user).to(device)
 

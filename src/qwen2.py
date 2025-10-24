@@ -331,6 +331,8 @@ class Qwen2MultiHeadAttentionWithCache(nn.Module):
             offset_slice = [slice(offset, offset + L)]
         else:
             offset_slice = [slice(int(i), int(i + L)) for i in offset]
+
+        # 只计算新生成的 token
         projection_q = self.rope(projection_q, offset=offset_slice)
         projection_k = self.rope(projection_k, offset=offset_slice)
 
@@ -338,12 +340,11 @@ class Qwen2MultiHeadAttentionWithCache(nn.Module):
         projection_k = projection_k.transpose(1, 2)  # (B, num_kv_heads, L, head_dim)
         projection_v = projection_v.transpose(1, 2)  # (B, num_kv_heads, L, head_dim)
 
+        # batch kv cache update and fetch
         projection_k, projection_v, _, mask = cache.update_and_fetch(
             projection_k, projection_v, mask_length=L, mask=mask
         )
-        S = projection_k.shape[-2]
-        if mask == "causal":
-            mask = causal_mask(L, S, torch.float32, device=x.device)
+        # S = projection_k.shape[-2]
 
         x = scaled_dot_product_attention_grouped(
             projection_q.to(torch.float32),
