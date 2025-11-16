@@ -45,17 +45,13 @@ def test_qwen2_gqa_attention(
             torch.ones(seq_len, seq_len, dtype=torch.bool, device=dev), diagonal=1
         )
         attention_mask = (
-            attention_mask.masked_fill(attention_mask, float("-inf"))
-            .unsqueeze(0)
-            .unsqueeze(0)
+            attention_mask.masked_fill(attention_mask, float("-inf")).unsqueeze(0).unsqueeze(0)
         )
     else:
         attention_mask = None
 
     position_embeddings = rotary_emb(x, position_ids)
-    torch_output = torch_attention(
-        x, position_embeddings, attention_mask=attention_mask
-    )[0]
+    torch_output = torch_attention(x, position_embeddings, attention_mask=attention_mask)[0]
     print(torch_output)
 
 

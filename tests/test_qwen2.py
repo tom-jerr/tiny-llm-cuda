@@ -1,9 +1,14 @@
 import pytest
 import torch
-from .utils import *
-from .tinyllm_base import Qwen2ModelV1, EmbeddingLayer, dequantize_linear
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from src import qwen2
+
+from src import (
+    LMHead,
+    dequantize_linear,
+    qwen2,
+)
+
+from .utils import *
 
 
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
@@ -36,9 +41,7 @@ def test_task_1_transformer_block(device: str, dtype: torch.dtype, mask: str | N
     )
     config._attn_implementation = "sdpa"
 
-    torch_transformer_block = (
-        modeling_qwen2.Qwen2DecoderLayer(config, 0).to(device).to(dtype)
-    )
+    torch_transformer_block = modeling_qwen2.Qwen2DecoderLayer(config, 0).to(device).to(dtype)
     rotary_emb = modeling_qwen2.Qwen2RotaryEmbedding(config).to(device)
 
     torch_attention = torch_transformer_block.self_attn
@@ -58,35 +61,44 @@ def test_task_1_transformer_block(device: str, dtype: torch.dtype, mask: str | N
     w_input_layernorm = torch_transformer_block.input_layernorm.weight
     w_post_attention_layernorm = torch_transformer_block.post_attention_layernorm.weight
 
-    user_transformer_block = qwen2.Qwen2TransformerBlock(
-        num_attention_heads=NUM_ATTENTION_HEAD,
-        num_kv_heads=NUM_KV_HEADS,
+    user_config = qwen2.Qwen2Config(
         hidden_size=HIDDEN_SIZE,
+        num_hidden_layers=1,
         intermediate_size=INTERMEDIATE_SIZE,
+        num_attention_heads=NUM_ATTENTION_HEAD,
+        num_key_value_heads=NUM_KV_HEADS,
         rms_norm_eps=1e-6,
-        wq=wq,
-        wk=wk,
-        wv=wv,
-        wo=wo,
-        bq=bq,
-        bk=bk,
-        bv=bv,
-        w_gate=w_gate,
-        w_up=w_up,
-        w_down=w_down,
-        w_input_layernorm=w_input_layernorm,
-        w_post_attention_layernorm=w_post_attention_layernorm,
-    ).to(device)
+        vocab_size=1000,
+        max_position_embeddings=1000,
+    )
+    user_transformer_block = (
+        qwen2.Qwen2TransformerBlock(
+            user_config,
+            w_input_layernorm=w_input_layernorm,
+            w_post_attention_layernorm=w_post_attention_layernorm,
+        )
+        .to(device)
+        .to(dtype)
+    )
+
+    # 复制权重到用户模型
+    with torch.no_grad():
+        user_transformer_block.self_attn.q_proj.weight.copy_(wq)
+        user_transformer_block.self_attn.k_proj.weight.copy_(wk)
+        user_transformer_block.self_attn.v_proj.weight.copy_(wv)
+        user_transformer_block.self_attn.o_proj.weight.copy_(wo)
+        user_transformer_block.self_attn.q_proj.bias.copy_(bq)
+        user_transformer_block.self_attn.k_proj.bias.copy_(bk)
+        user_transformer_block.self_attn.v_proj.bias.copy_(bv)
+        user_transformer_block.mlp.gate_proj.weight.copy_(w_gate)
+        user_transformer_block.mlp.up_proj.weight.copy_(w_up)
+        user_transformer_block.mlp.down_proj.weight.copy_(w_down)
 
     torch.manual_seed(42)
     x = torch.randn(BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE, dtype=dtype, device=device)
-    position_ids = torch.arange(SEQ_LEN, device=device).unsqueeze(
-        0
-    )  # 需要 (bz, seq_len)
+    position_ids = torch.arange(SEQ_LEN, device=device).unsqueeze(0)  # 需要 (bz, seq_len)
     position_embeddings = rotary_emb(x, position_ids)
-    position_embeddings = tuple(
-        pe.to(device=device, dtype=dtype) for pe in position_embeddings
-    )
+    position_embeddings = tuple(pe.to(device=device, dtype=dtype) for pe in position_embeddings)
 
     with torch.no_grad():
         user_output = user_transformer_block(x, mask=mask)
@@ -109,18 +121,14 @@ def helper_test_task_3(model_name: str, iters: int = 10):
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    model = Qwen2ModelV1(torch_model)
+    model = qwen2.Qwen2ModelV1(torch_model)
 
     with torch.no_grad():
         for _ in range(iters):
-            input_ids = torch.randint(
-                low=0, high=tokenizer.vocab_size, size=(1, 10), device=device
-            )
+            input_ids = torch.randint(low=0, high=tokenizer.vocab_size, size=(1, 10), device=device)
 
             user_output = model(input_ids)
-            user_output = user_output - torch.logsumexp(
-                user_output, dim=-1, keepdim=True
-            )
+            user_output = user_output - torch.logsumexp(user_output, dim=-1, keepdim=True)
 
             ref_output = torch_model(input_ids).logits
             ref_output = ref_output - torch.logsumexp(ref_output, dim=-1, keepdim=True)
@@ -128,9 +136,7 @@ def helper_test_task_3(model_name: str, iters: int = 10):
             assert_allclose(user_output, ref_output, precision=torch.float16, rtol=1e-1)
 
 
-@pytest.mark.skipif(
-    not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct model not found"
-)
+@pytest.mark.skipif(not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct model not found")
 def test_task_2_embedding_call():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -138,7 +144,7 @@ def test_task_2_embedding_call():
         "Qwen/Qwen2-0.5B-Instruct", torch_dtype=torch.float16, device_map=device
     )
 
-    embedding = EmbeddingLayer(
+    embedding = LMHead(
         torch_model.config.vocab_size,
         torch_model.config.hidden_size,
         dequantize_linear(torch_model.model.embed_tokens).to(torch.float16),
@@ -156,9 +162,7 @@ def test_task_2_embedding_call():
             assert_allclose(user_output, ref_output, precision=torch.float16)
 
 
-@pytest.mark.skipif(
-    not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct model not found"
-)
+@pytest.mark.skipif(not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct model not found")
 def test_task_2_embedding_as_linear():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -166,7 +170,7 @@ def test_task_2_embedding_as_linear():
         "Qwen/Qwen2-0.5B-Instruct", torch_dtype=torch.float16, device_map=device
     )
 
-    embedding = EmbeddingLayer(
+    lmhead = LMHead(
         torch_model.config.vocab_size,
         torch_model.config.hidden_size,
         dequantize_linear(torch_model.model.embed_tokens).to(torch.float16),
@@ -182,7 +186,7 @@ def test_task_2_embedding_as_linear():
                 device=device,
             )
 
-            user_output = embedding.as_linear(input_tensor)
+            user_output = lmhead.as_linear(input_tensor)
             ref_output = torch.nn.functional.linear(
                 input_tensor, torch_model.model.embed_tokens.weight
             )
@@ -190,9 +194,7 @@ def test_task_2_embedding_as_linear():
             assert_allclose(user_output, ref_output, precision=torch.float16, atol=1e-1)
 
 
-@pytest.mark.skipif(
-    not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct model not found"
-)
+@pytest.mark.skipif(not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct model not found")
 def test_task_3_qwen_2_05b():
     helper_test_task_3("Qwen/Qwen2-0.5B-Instruct", 5)
 
@@ -204,8 +206,6 @@ def test_task_3_qwen_2_05b():
 #     helper_test_task_3("Qwen/Qwen2-7B-Instruct", 1)
 
 
-@pytest.mark.skipif(
-    not qwen_2_15b_model_exists(), reason="Qwen2-1.5B-Instruct model not found"
-)
+@pytest.mark.skipif(not qwen_2_15b_model_exists(), reason="Qwen2-1.5B-Instruct model not found")
 def test_task_3_qwen_2_15b():
     helper_test_task_3("Qwen/Qwen2-1.5B-Instruct", 3)

@@ -1,7 +1,10 @@
+import math
+from collections.abc import Callable
+
 import torch
 import torch.nn as nn
-from .basics import linear, softmax
-import math
+
+from .linear import linear, softmax
 
 
 def scaled_dot_product_attention_simple(
@@ -224,3 +227,77 @@ def ref_scaled_dot_product_attention(
     attn_weight = torch.softmax(attn_weight, dim=-1)
     attn_weight = torch.dropout(attn_weight, dropout_p, train=True)
     return attn_weight @ value
+
+
+# ============================================================================
+# Attention Implementation Registry
+# ============================================================================
+
+# 静态映射：字符串 -> attention实现函数
+ATTENTION_IMPLEMENTATIONS: dict[str, Callable] = {
+    "simple": scaled_dot_product_attention_simple,
+    "gqa": scaled_dot_product_attention_grouped,  # 别名
+    "ref": ref_scaled_dot_product_attention,  # 别名
+}
+
+
+def get_attention(name: str) -> Callable:
+    """
+    根据名称获取attention实现函数
+    
+    Args:
+        name: attention实现的名称，支持以下选项：
+            - "simple": 简单的多头注意力实现
+            - "grouped" 或 "gqa": 分组查询注意力(GQA)实现
+            - "reference" 或 "ref": PyTorch参考实现
+    
+    Returns:
+        对应的attention实现函数
+    
+    Raises:
+        ValueError: 如果提供的名称不在支持的实现中
+    
+    Examples:
+        >>> attn_fn = get_attention_implementation("gqa")
+        >>> output = attn_fn(query, key, value, scale=0.125)
+    """
+    if name not in ATTENTION_IMPLEMENTATIONS:
+        available = ", ".join(ATTENTION_IMPLEMENTATIONS.keys())
+        raise ValueError(
+            f"Unknown attention implementation: '{name}'. "
+            f"Available options: {available}"
+        )
+    return ATTENTION_IMPLEMENTATIONS[name]
+
+
+def scaled_dot_product_attention(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    scale: float | None = None,
+    mask: torch.Tensor | None = None,
+    implementation: str = "gqa",
+) -> torch.Tensor:
+    """
+    统一的注意力接口，支持通过字符串选择不同的实现
+    
+    Args:
+        query: Query tensor of shape (batch_size, num_heads, seq_len_q, depth)
+        key: Key tensor of shape (batch_size, num_heads, seq_len_k, depth)
+        value: Value tensor of shape (batch_size, num_heads, seq_len_v, depth_v)
+        scale: Scaling factor. If None, defaults to implementation-specific default
+        mask: Mask tensor or "causal" string
+        implementation: 实现方式，可选 "simple", "gqa", "ref"
+    
+    Returns:
+        Output tensor of shape (batch_size, num_heads, seq_len_q, depth_v)
+    
+    Examples:
+        >>> # 使用GQA实现
+        >>> output = scaled_dot_product_attention(q, k, v, implementation="gqa")
+        >>> 
+        >>> # 使用简单实现
+        >>> output = scaled_dot_product_attention(q, k, v, implementation="simple")
+    """
+    attn_fn = get_attention(implementation)
+    return attn_fn(query, key, value, scale=scale, mask=mask)

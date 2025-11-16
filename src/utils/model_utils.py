@@ -1,4 +1,7 @@
-from .qwen2 import Qwen2ModelV1, Qwen2ModelV2
+from ..models import (
+    Qwen2ModelV1,
+    # Qwen2ModelV2,
+)
 
 
 def shortcut_name_to_full_name(shortcut_name: str):
@@ -25,8 +28,8 @@ def dispatch_model(model_name: str, torch_model, version: int, **kwargs):
     model_name = shortcut_name_to_full_name(model_name)
     if version == 1 and model_name.startswith("Qwen/Qwen2"):
         return Qwen2ModelV1(torch_model, **kwargs)
-    elif version == 2 and model_name.startswith("Qwen/Qwen2"):
-        return Qwen2ModelV2(torch_model, **kwargs)
+    # elif version == 2 and model_name.startswith("Qwen/Qwen2"):
+    #     return Qwen2ModelV2(torch_model, **kwargs)
     # elif week == 2 and model_name.startswith("mlx-community/Qwen3"):
     #     return Qwen3Model(torch_model, **kwargs)
     else:

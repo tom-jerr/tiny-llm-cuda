@@ -1,9 +1,11 @@
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import argparse
 import random
-from src.batch import batch_generate
-from src.qwen2 import Qwen2ModelV2
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from src.cache.request import batch_generate
+from src.models.qwen2 import Qwen2ModelV2
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="Qwen/Qwen2-0.5B-Instruct")
@@ -88,7 +90,7 @@ def main():
 
         encoded_prompts.append(formatted_prompt)
 
-    print(f"\nStarting batch generation with:")
+    print("\nStarting batch generation with:")
     print(f"  Batch size: {args.batch_size}")
     print(f"  Prefill step: {args.prefill_step}")
     print(f"  Max sequence length: {args.max_seq_len}")

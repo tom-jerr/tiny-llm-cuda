@@ -1,7 +1,7 @@
-from setuptools import setup
 import os
-from torch.utils.cpp_extension import BuildExtension
-from torch.utils.cpp_extension import CUDAExtension, CppExtension
+
+from setuptools import setup
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 ext_modules = []
 this_dir = os.path.dirname(__file__)

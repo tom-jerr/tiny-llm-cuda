@@ -1,4 +1,5 @@
 import argparse
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -15,9 +16,7 @@ parser.add_argument(
 )
 parser.add_argument("--solution", type=str, default="tinyllm")
 parser.add_argument("--loader", type=str, default="v1")
-parser.add_argument(
-    "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
-)
+parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
 parser.add_argument("--sampler-temp", type=float, default=0)
 parser.add_argument("--sampler-top-p", type=float, default=0)
 parser.add_argument("--sampler-top-k", type=int, default=0)
@@ -33,11 +32,11 @@ if args.solution == "tinyllm":
     print("Using your tinyllm solution")
     from tests.tinyllm_base import (
         dispatch_model,
+        # speculative_generate,
+        make_sampler,
         shortcut_name_to_full_name,
         simple_generate,
         simple_generate_with_kv_cache,
-        # speculative_generate,
-        make_sampler,
     )
 elif args.solution == "transformers":
     print("Using transformers solution")
@@ -62,9 +61,7 @@ model.eval()
 if args.draft_model:
     print(f"Loading draft model {args.draft_model} ...")
     draft_tokenizer = AutoTokenizer.from_pretrained(args.draft_model)
-    draft_model = AutoModelForCausalLM.from_pretrained(
-        args.draft_model, torch_dtype=torch.float16
-    )
+    draft_model = AutoModelForCausalLM.from_pretrained(args.draft_model, torch_dtype=torch.float16)
     draft_model.to(args.device)
     draft_model.eval()
 else:
@@ -94,9 +91,7 @@ else:
 # =============================
 # 构造 sampler
 # =============================
-sampler_fn = make_sampler(
-    args.sampler_temp, top_p=args.sampler_top_p, top_k=args.sampler_top_k
-)
+sampler_fn = make_sampler(args.sampler_temp, top_p=args.sampler_top_p, top_k=args.sampler_top_k)
 
 # =============================
 # Choose generation logic

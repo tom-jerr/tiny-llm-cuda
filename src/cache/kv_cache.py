@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Optional
-from .attention import causal_mask
+
 import torch
+
+from .attention import causal_mask
 
 
 class TinyKvCache(ABC):
@@ -12,7 +13,7 @@ class TinyKvCache(ABC):
         value: torch.Tensor,
         mask_length: int | None = None,
         mask: torch.Tensor | str | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor, int, Optional[torch.Tensor]]:
+    ) -> tuple[torch.Tensor, torch.Tensor, int, torch.Tensor | None]:
         """
         Update the key-value cache and fetch the updated key-value cache.
 
@@ -49,16 +50,16 @@ class BatchingKvCache(TinyKvCache):
         values: torch.Tensor,
         mask_length: int | None = None,
         mask: torch.Tensor | str | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor, int, Optional[torch.Tensor]]:
+    ) -> tuple[torch.Tensor, torch.Tensor, int, torch.Tensor | None]:
         B, H, S, D = keys.shape
         assert keys.shape == values.shape
-        assert S <= self.max_seq_len
+        assert self.max_seq_len >= S
         if self.HD is None:
             self.HD = (H, D)
         else:
             assert self.HD == (H, D), f"expect {self.HD} but got {H, D}"
 
-        assert B == self.max_active_requests
+        assert self.max_active_requests == B
         # 1. update cache
         max_seq_len = 0
         data = [None] * B  # to store per-request data

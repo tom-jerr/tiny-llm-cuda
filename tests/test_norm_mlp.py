@@ -1,9 +1,10 @@
 import pytest
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from .tinyllm_base import RMSNorm, silu
-from src import qwen2
+
+from src import Qwen2Config as UserQwen2Config
+from src import RMSNorm, qwen2, silu
+
 from .utils import *
 
 
@@ -87,9 +88,25 @@ def test_task_2_qwen_mlp(device: str, precision: torch.dtype, dims: dict):
     w_up = torch.rand(HIDDEN_DIM, DIM, device=device, dtype=precision)
     w_down = torch.rand(DIM, HIDDEN_DIM, device=device, dtype=precision)
 
+    user_config = UserQwen2Config(
+        hidden_size=DIM,
+        intermediate_size=HIDDEN_DIM,
+        num_hidden_layers=2,
+        num_attention_heads=8,
+        num_key_value_heads=4,  # Not used by MLP, but required by config
+        rms_norm_eps=1e-6,
+        vocab_size=1000,
+        rope_theta=10000.0,
+        max_position_embeddings=1000,
+    )
     user_mlp = qwen2.Qwen2MLP(
-        dim=DIM, hidden_dim=HIDDEN_DIM, w_gate=w_gate, w_up=w_up, w_down=w_down
+        user_config
     ).to(device=device, dtype=precision)
+    # 复制权重到用户模型
+    with torch.no_grad():
+        user_mlp.gate_proj.weight.copy_(w_gate)
+        user_mlp.up_proj.weight.copy_(w_up)
+        user_mlp.down_proj.weight.copy_(w_down)
     user_output = user_mlp(x)
 
     from transformers import Qwen2Config

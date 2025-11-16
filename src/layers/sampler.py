@@ -1,6 +1,7 @@
+
 import torch
-import copy
-from .basics import softmax
+
+from .linear import softmax
 
 
 def make_sampler(temp: float, top_p: float, top_k: int | None):

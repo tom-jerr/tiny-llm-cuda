@@ -1,8 +1,10 @@
+from collections.abc import Callable
+
 import torch
-from typing import Callable
 from transformers import PreTrainedTokenizer
+
+from ..models.qwen2 import Qwen2ModelV1, Qwen2ModelV2
 from .kv_cache import TinyKvFullCache
-from .qwen2 import Qwen2ModelV1, Qwen2ModelV2
 
 
 def simple_generate(

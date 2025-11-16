@@ -2,12 +2,13 @@
 import pytest
 import torch
 import torch.nn as nn
-from src.attention import (
-    scaled_dot_product_attention_simple,
-    SimpleMultiHeadAttention,
-)
-from src.basics import softmax, linear
 import torch.nn.functional as F
+
+from src.layers.attention import (
+    SimpleMultiHeadAttention,
+    get_attention,
+)
+from src.layers.linear import linear, softmax
 from tests.utils import *
 
 
@@ -24,9 +25,7 @@ def test_task_1_softmax(device: torch.device, precision: torch.dtype):
 
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
 @pytest.mark.parametrize("precision", PRECISIONS, ids=PRECISION_IDS)
-@pytest.mark.parametrize(
-    "batch_dimension", [0, 1, 2], ids=["batch_0", "batch_1", "batch_2"]
-)
+@pytest.mark.parametrize("batch_dimension", [0, 1, 2], ids=["batch_0", "batch_1", "batch_2"])
 def test_task_1_simple_attention(
     device: torch.device, precision: torch.dtype, batch_dimension: int
 ):
@@ -49,9 +48,12 @@ def test_task_1_simple_attention(
             dropout_p=0.0,
             is_causal=False,
         ).reshape(
-            *BATCH_SIZE, L, D  # type: ignore
+            *BATCH_SIZE,
+            L,
+            D,  # type: ignore
         )
-        user_out = scaled_dot_product_attention_simple(query, key, value)
+        user_attn = get_attention("simple")
+        user_out = user_attn(query, key, value)
         assert_allclose(user_out, reference_out, precision=precision)
 
 
@@ -70,10 +72,7 @@ def test_task_2_linear(device: torch.device, precision: torch.dtype):
 
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
 @pytest.mark.parametrize("precision", PRECISIONS, ids=PRECISION_IDS)
-def test_task_2_simple_multi_head_attention(
-    device: torch.device, precision: torch.dtype
-):
-
+def test_task_2_simple_multi_head_attention(device: torch.device, precision: torch.dtype):
     N, L, H, D = 10, 11, 3, 9
     embed_dim = H * D
     for _ in range(100):
@@ -84,14 +83,12 @@ def test_task_2_simple_multi_head_attention(
         q_proj_weight = torch.rand(embed_dim, embed_dim, dtype=precision, device=device)
         k_proj_weight = torch.rand(embed_dim, embed_dim, dtype=precision, device=device)
         v_proj_weight = torch.rand(embed_dim, embed_dim, dtype=precision, device=device)
-        out_proj_weight = torch.rand(
-            embed_dim, embed_dim, dtype=precision, device=device
-        )
+        out_proj_weight = torch.rand(embed_dim, embed_dim, dtype=precision, device=device)
 
         # Reference
-        reference_mha = nn.MultiheadAttention(
-            embed_dim, H, batch_first=True, bias=False
-        ).to(device, precision)
+        reference_mha = nn.MultiheadAttention(embed_dim, H, batch_first=True, bias=False).to(
+            device, precision
+        )
         reference_mha.in_proj_weight.data = torch.cat(
             [q_proj_weight, k_proj_weight, v_proj_weight], dim=0
         )

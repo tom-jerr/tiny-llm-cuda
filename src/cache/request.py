@@ -1,9 +1,9 @@
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from .kv_cache import *
-from .qwen2 import Qwen2ModelV2
-from typing import Callable
 from datetime import datetime
+
+import torch
+from transformers import AutoTokenizer
+
+from .kv_cache import *
 
 
 def _step(model, y, offsets, kv_cache):

@@ -1,5 +1,5 @@
-from tinyllm_ext import vector_add
 import torch
+from tinyllm_ext import vector_add
 
 a = torch.ones(3, dtype=torch.float32)
 b = torch.ones(3, dtype=torch.float32)

@@ -16,11 +16,10 @@ dependencies = [
     "xxhash",
     "numpy>=2.2.4",
     "accelerate>=1.11.0",
+    "flash-attn>=2.8.3",
+    "ruff>=0.11.6",
+    "pre-commit>=4.0.0",
 ]
-
-# 将仅用于开发的依赖项分组
-[tool.pdm.dev-dependencies]
-dev = ["pytest>=8.3.5", "pytest-benchmark>=5.1.0", "ruff>=0.11.6"]
 
 # 简化脚本，只保留当前项目可用的命令
 [tool.pdm.scripts]
@@ -35,6 +34,8 @@ test = "python scripts/dev-tools.py test"
 bench = "pytest benches"
 format = "ruff format"
 format-cpp = "bash -c \"find src/extensions -type file \\( -name '*.h' -or -name '*.cpp' \\) | xargs -n1 clang-format -i\""
+pre-commit-install = "pre-commit install"
+pre-commit-run = "pre-commit run --all-files"
 
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]

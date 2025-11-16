@@ -33,17 +33,3 @@ def linear(
     if bias is not None:
         y += bias
     return y
-
-
-def silu(x: torch.Tensor) -> torch.Tensor:
-    """SiLU activation function, also known as the swish function.
-    silu(x) = x * sigmoid(x)
-    平滑且连续可导，非单调性
-
-    Args:
-        x (torch.Tensor): Input tensor.
-
-    Returns:
-        torch.Tensor: Output tensor after applying the SiLU activation function.
-    """
-    return x * torch.sigmoid(x)

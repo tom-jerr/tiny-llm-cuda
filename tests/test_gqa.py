@@ -1,9 +1,18 @@
 import pytest
 import torch
+
+from src import (
+    Qwen2Attention as UserQwen2Attention,
+)
+from src import (
+    Qwen2Config as UserConfig,
+)
+from src import (
+    causal_mask,
+    get_attention,
+)
+
 from .utils import *
-from src.attention import *
-import src.qwen2 as qwen2
-import math
 
 
 def grouped_attention_helper(
@@ -55,7 +64,7 @@ def grouped_attention_helper(
         else:
             attn_mask = None
 
-        reference_output = ref_scaled_dot_product_attention(
+        reference_output = get_attention("ref")(
             query_reshaped,
             key_reshaped,
             value_reshaped,
@@ -68,7 +77,7 @@ def grouped_attention_helper(
         # Reshape reference output back to original shape
         reference_output = reference_output.reshape(query.shape)
 
-        user_output = scaled_dot_product_attention_grouped(
+        user_output = get_attention("gqa")(
             query,
             key,
             value,
@@ -81,9 +90,7 @@ def grouped_attention_helper(
 
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
 @pytest.mark.parametrize("dtype", PRECISIONS, ids=PRECISION_IDS)
-@pytest.mark.parametrize(
-    "batch_dimension", [0, 1, 2], ids=["batch_0", "batch_1", "batch_2"]
-)
+@pytest.mark.parametrize("batch_dimension", [0, 1, 2], ids=["batch_0", "batch_1", "batch_2"])
 @pytest.mark.parametrize("scale", [None, 0.8])
 def test_task_1_grouped_attention(
     device: str, dtype: torch.dtype, batch_dimension: int, scale: float | None
@@ -143,9 +150,7 @@ def test_task_2_mask_only_different_dim(device: str):
 
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
 @pytest.mark.parametrize("dtype", PRECISIONS, ids=PRECISION_IDS)
-@pytest.mark.parametrize(
-    "batch_dimension", [0, 1, 2], ids=["batch_0", "batch_1", "batch_2"]
-)
+@pytest.mark.parametrize("batch_dimension", [0, 1, 2], ids=["batch_0", "batch_1", "batch_2"])
 @pytest.mark.parametrize("scale", [None, 0.8])
 def test_task_2_grouped_attention_causal_mask(
     device: str, dtype: torch.dtype, batch_dimension: int, scale: float | None
@@ -160,9 +165,7 @@ def test_task_2_grouped_attention_causal_mask(
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
 @pytest.mark.parametrize("dtype", PRECISIONS, ids=PRECISION_IDS)
 @pytest.mark.parametrize("mask", [None, "causal"], ids=["no_mask", "causal_mask"])
-def test_task_3_qwen2_grouped_query_attention(
-    device: str, dtype: torch.dtype, mask: str | None
-):
+def test_task_3_qwen2_grouped_query_attention(device: str, dtype: torch.dtype, mask: str | None):
     if device == "cuda" and not torch.cuda.is_available():
         pytest.skip("CUDA not available")
 
@@ -206,42 +209,37 @@ def test_task_3_qwen2_grouped_query_attention(
     position_embeddings = rotary_emb(x, position_ids)
 
     torch_output = torch_attention(
-        x,
-        position_embeddings,
+        hidden_states=x,
+        position_embeddings=position_embeddings,
         attention_mask=None,
-        is_causal=True if mask == "causal" else False,
-    )[0].to(device=dev, dtype=dtype)
+        is_causal=mask == "causal",
+    )[0]
 
-    # Extract weights and biases
-    wq = torch_attention.q_proj.weight
-    wk = torch_attention.k_proj.weight
-    wv = torch_attention.v_proj.weight
-    wo = torch_attention.o_proj.weight
-    bq = (
-        torch_attention.q_proj.bias if hasattr(torch_attention.q_proj, "bias") else None
-    )
-    bk = (
-        torch_attention.k_proj.bias if hasattr(torch_attention.k_proj, "bias") else None
-    )
-    bv = (
-        torch_attention.v_proj.bias if hasattr(torch_attention.v_proj, "bias") else None
-    )
-
-    user_attention = qwen2.Qwen2MultiHeadAttention(
+    user_config = UserConfig(
         hidden_size=hidden_size,
-        num_heads=num_heads,
-        num_kv_heads=num_kv_heads,
-        wq=wq,
-        wk=wk,
-        wv=wv,
-        wo=wo,
-        bq=bq,
-        bk=bk,
-        bv=bv,
-        max_seq_len=max_seq_len,
-        theta=theta,
+        num_hidden_layers=2,
+        intermediate_size=hidden_size * 4,
+        num_attention_heads=num_heads,
+        num_key_value_heads=num_kv_heads,
+        rms_norm_eps=1e-6,
+        vocab_size=1000,
+        rope_theta=theta,
+        max_position_embeddings=max_seq_len,
     )
 
-    user_output = user_attention(x, mask=mask).to(device=dev, dtype=dtype)
+    user_attention = UserQwen2Attention(user_config)
+
+    # 复制权重从transformers模型到用户模型
+    user_attention.q_proj.weight.data = torch_attention.q_proj.weight.data.clone()
+    user_attention.k_proj.weight.data = torch_attention.k_proj.weight.data.clone()
+    user_attention.v_proj.weight.data = torch_attention.v_proj.weight.data.clone()
+    user_attention.o_proj.weight.data = torch_attention.o_proj.weight.data.clone()
+    user_attention.q_proj.bias.data = torch_attention.q_proj.bias.data.clone()
+    user_attention.k_proj.bias.data = torch_attention.k_proj.bias.data.clone()
+    user_attention.v_proj.bias.data = torch_attention.v_proj.bias.data.clone()
+
+    user_attention = user_attention.to(device=dev, dtype=dtype)
+
+    user_output = user_attention(x, mask=mask)
 
     assert_allclose(user_output, torch_output, precision=dtype)

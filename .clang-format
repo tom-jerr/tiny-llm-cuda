@@ -1,0 +1,82 @@
+# Clang-Format configuration for C++/CUDA files
+# See https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+
+---
+Language: Cpp
+BasedOnStyle: Google
+
+# 基本格式
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 100
+
+# 大括号换行
+BreakBeforeBraces: Attach
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# 指针和引用对齐
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+# 命名空间缩进
+NamespaceIndentation: None
+
+# 访问修饰符缩进
+AccessModifierOffset: -1
+
+# 构造函数初始化列表
+ConstructorInitializerIndentWidth: 4
+BreakConstructorInitializers: BeforeColon
+
+# 参数对齐
+AlignAfterOpenBracket: Align
+BinPackArguments: true
+BinPackParameters: true
+
+# Include 排序
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<torch/'
+    Priority: 1
+  - Regex: '^<cuda'
+    Priority: 2
+  - Regex: '^<'
+    Priority: 3
+  - Regex: '.*'
+    Priority: 4
+
+# 注释
+ReflowComments: true
+
+# 空行
+MaxEmptyLinesToKeep: 2
+KeepEmptyLinesAtTheStartOfBlocks: false
+
+# 空格
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# 连续赋值对齐
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+
+# 其他
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+IndentCaseLabels: true

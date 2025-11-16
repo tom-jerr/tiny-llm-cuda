@@ -1,6 +1,7 @@
+from typing import Any, Union
+
 import torch
 import torch.nn as nn
-from typing import Any, Union
 
 
 def dequantize_linear(torch_layer: Union[nn.Linear, nn.Embedding, Any]) -> torch.Tensor:

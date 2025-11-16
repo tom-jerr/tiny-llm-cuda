@@ -1,7 +1,8 @@
-#include "vector_add.h"
 #include <torch/extension.h>
 
-__global__ void vector_add_kernel(float *a, float *b, float *out, int64_t n) {
+#include "vector_add.h"
+
+__global__ void vector_add_kernel(float* a, float* b, float* out, int64_t n) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < n) {
     out[idx] = a[idx] + b[idx];
@@ -13,8 +14,8 @@ void vector_add_cuda(torch::Tensor a, torch::Tensor b, torch::Tensor out) {
   const int threads = 256;
   const int blocks = (n + threads - 1) / threads;
 
-  vector_add_kernel<<<blocks, threads>>>(
-      a.data_ptr<float>(), b.data_ptr<float>(), out.data_ptr<float>(), n);
+  vector_add_kernel<<<blocks, threads>>>(a.data_ptr<float>(), b.data_ptr<float>(),
+                                         out.data_ptr<float>(), n);
 }
 
 // CPU Implement

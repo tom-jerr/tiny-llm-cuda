@@ -1,0 +1,83 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+
+repos:
+  # Ruff - Python formatter only (不进行 lint 检查)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      # Ruff formatter - 仅格式化代码
+      - id: ruff-format
+        name: ruff format
+        types_or: [python, pyi]
+
+  # 基础文件检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # 检查 YAML 文件语法
+      - id: check-yaml
+        args: [--unsafe] # 允许自定义 YAML 标签
+
+      # 检查 TOML 文件语法
+      - id: check-toml
+
+      # 检查 JSON 文件语法
+      - id: check-json
+
+      # 检查是否有合并冲突标记
+      - id: check-merge-conflict
+
+      # 检查是否有大文件被添加
+      - id: check-added-large-files
+        args: [--maxkb=10240] # 10MB
+
+      # 移除文件末尾的空白字符
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      # 确保文件以换行符结尾
+      - id: end-of-file-fixer
+
+      # 修复混合的行结束符
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+      # 检查是否有调试语句残留
+      - id: debug-statements
+
+      # 检查 Python 文件中的 docstring 是否是第一条语句
+      - id: check-docstring-first
+
+  # C++ 代码格式化 (针对 CUDA 扩展)
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.6
+    hooks:
+      - id: clang-format
+        types_or: [c++, c, cuda]
+        args: [-i] # 直接修改文件
+
+  # Markdown 文件检查和格式化
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [markdown, yaml, json]
+        exclude: ^(CHANGELOG\.md|\.github/) # 排除特殊文件
+
+# 全局配置
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+
+# CI 配置
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

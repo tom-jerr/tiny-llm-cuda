@@ -1,0 +1,45 @@
+# Ruff configuration file
+# See https://docs.astral.sh/ruff/configuration/
+
+# 目标 Python 版本
+target-version = "py310"
+
+# 每行最大字符数
+line-length = 100
+
+# 缩进宽度
+indent-width = 4
+
+# 要检查的文件
+extend-include = ["*.ipynb"]
+
+# 要排除的文件和目录
+extend-exclude = [
+    "__pycache__",
+    "*.pyc",
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+[format]
+# 使用双引号
+quote-style = "double"
+
+# 缩进使用空格
+indent-style = "space"
+
+# 跳过魔术尾随逗号
+skip-magic-trailing-comma = false
+
+# 自动检测行尾
+line-ending = "auto"
+
+# 文档字符串格式化
+docstring-code-format = true
+docstring-code-line-length = 80

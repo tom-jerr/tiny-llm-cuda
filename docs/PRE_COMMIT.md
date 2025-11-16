@@ -1,0 +1,327 @@
+# Pre-commit Hooks 使用指南
+
+本项目使用 [pre-commit](https://pre-commit.com/) 来自动化代码质量检查和格式化。
+
+## 🎯 功能
+
+Pre-commit hooks 会在每次 `git commit` 之前自动运行以下检查：
+
+### Python 代码
+
+- ✅ **Ruff Lint**: 检查代码风格和潜在问题
+- ✅ **Ruff Format**: 自动格式化 Python 代码
+- ✅ **Bandit**: 检查安全漏洞
+- ✅ **Debug Statements**: 检查残留的调试语句
+
+### C++/CUDA 代码
+
+- ✅ **Clang-Format**: 格式化 C++ 和 CUDA 文件
+
+### 通用检查
+
+- ✅ **YAML/TOML/JSON**: 检查配置文件语法
+- ✅ **Merge Conflicts**: 检查合并冲突标记
+- ✅ **Large Files**: 防止提交大文件 (>10MB)
+- ✅ **Trailing Whitespace**: 移除行尾空白
+- ✅ **EOF Fixer**: 确保文件以换行结束
+- ✅ **Markdown**: 格式化 Markdown 文件
+
+## 📦 安装
+
+### 方法 1: 使用 PDM (推荐)
+
+```bash
+# 安装开发依赖
+pdm install -d
+
+# 安装 pre-commit hooks
+pdm run pre-commit-install
+```
+
+### 方法 2: 使用 pip
+
+```bash
+# 安装 pre-commit
+pip install pre-commit
+
+# 安装 hooks
+pre-commit install
+```
+
+## 🚀 使用
+
+### 自动运行 (推荐)
+
+安装完成后，每次 `git commit` 时会自动运行：
+
+```bash
+git add .
+git commit -m "Your commit message"
+# pre-commit hooks 会自动运行并修复问题
+```
+
+如果 hooks 修改了文件，你需要：
+
+1. 查看修改
+2. 重新 `git add` 修改的文件
+3. 再次 `git commit`
+
+### 手动运行
+
+#### 检查所有文件
+
+```bash
+# 使用 PDM
+pdm run pre-commit-run
+
+# 或直接使用 pre-commit
+pre-commit run --all-files
+```
+
+#### 检查特定文件
+
+```bash
+pre-commit run --files src/layers/attention.py
+```
+
+#### 运行特定 hook
+
+```bash
+# 只运行 ruff
+pre-commit run ruff --all-files
+
+# 只运行格式化
+pre-commit run ruff-format --all-files
+
+# 只运行 clang-format
+pre-commit run clang-format --all-files
+```
+
+### 跳过 hooks (不推荐)
+
+紧急情况下可以跳过 hooks：
+
+```bash
+git commit --no-verify -m "Emergency fix"
+```
+
+**⚠️ 警告**: 只在紧急情况下使用，并在之后修复问题。
+
+## 🔧 独立工具使用
+
+除了 pre-commit，你也可以单独使用这些工具：
+
+### Ruff
+
+```bash
+# Lint 检查
+pdm run lint
+# 或
+ruff check .
+
+# 自动修复
+pdm run lint-fix
+# 或
+ruff check --fix .
+
+# 格式化
+pdm run format
+# 或
+ruff format .
+```
+
+### Clang-Format
+
+```bash
+# 格式化所有 C++/CUDA 文件
+pdm run format-cpp
+
+# 或手动格式化单个文件
+clang-format -i src/extensions/ops/vector_add.cu
+```
+
+## 📝 配置文件
+
+### .pre-commit-config.yaml
+
+Pre-commit 主配置文件，定义了要运行的 hooks。
+
+### ruff.toml
+
+Ruff linter 和 formatter 的配置：
+
+- 代码风格规则
+- 忽略的规则
+- 导入排序配置
+
+### .clang-format
+
+C++ 和 CUDA 代码格式化配置：
+
+- 基于 Google 风格
+- 缩进、空格、换行规则
+- Include 排序
+
+## 🎨 代码风格
+
+### Python
+
+遵循 [PEP 8](https://peps.python.org/pep-0008/) 和 Ruff 默认规则：
+
+```python
+# ✅ 推荐
+def calculate_attention(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    scale: float | None = None,
+) -> torch.Tensor:
+    """Calculate scaled dot-product attention.
+
+    Args:
+        query: Query tensor of shape (B, H, L, D)
+        key: Key tensor of shape (B, H, S, D)
+        value: Value tensor of shape (B, H, S, D)
+        scale: Scaling factor
+
+    Returns:
+        Attention output of shape (B, H, L, D)
+    """
+    scores = torch.matmul(query, key.transpose(-2, -1))
+    if scale is not None:
+        scores = scores * scale
+    return torch.softmax(scores, dim=-1) @ value
+```
+
+### C++/CUDA
+
+遵循 Google C++ 风格指南（略有修改）：
+
+```cpp
+// ✅ 推荐
+__global__ void vector_add_kernel(
+    float* a,
+    float* b,
+    float* out,
+    int64_t n
+) {
+  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < n) {
+    out[idx] = a[idx] + b[idx];
+  }
+}
+
+void vector_add_cuda(
+    torch::Tensor a,
+    torch::Tensor b,
+    torch::Tensor out
+) {
+  int64_t n = a.numel();
+  int threads = 256;
+  int blocks = (n + threads - 1) / threads;
+
+  vector_add_kernel<<<blocks, threads>>>(
+      a.data_ptr<float>(),
+      b.data_ptr<float>(),
+      out.data_ptr<float>(),
+      n
+  );
+}
+```
+
+## 🔍 常见问题
+
+### Q: Pre-commit 太慢了怎么办？
+
+A: 可以只在 push 前运行完整检查：
+
+```bash
+# 安装 pre-push hook
+pre-commit install --hook-type pre-push
+
+# 修改 .pre-commit-config.yaml
+# 将耗时的 hook 改为 pre-push
+```
+
+### Q: 某个文件总是格式化失败
+
+A: 检查文件编码和语法，或在 `.pre-commit-config.yaml` 中排除：
+
+```yaml
+exclude: ^path/to/problematic/file\.py$
+```
+
+### Q: 如何更新 hooks 版本？
+
+A:
+
+```bash
+pre-commit autoupdate
+```
+
+### Q: Clang-format 找不到
+
+A: 确保安装了 clang-format：
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install clang-format
+
+# macOS
+brew install clang-format
+
+# 或跳过 C++ 格式化
+SKIP=clang-format git commit -m "message"
+```
+
+### Q: 如何临时禁用某个 hook？
+
+A:
+
+```bash
+SKIP=ruff git commit -m "message"
+SKIP=ruff,clang-format git commit -m "message"
+```
+
+## 🚨 故障排除
+
+### 清理并重新安装
+
+```bash
+# 卸载 hooks
+pre-commit uninstall
+
+# 清理缓存
+pre-commit clean
+
+# 重新安装
+pre-commit install
+
+# 运行测试
+pre-commit run --all-files
+```
+
+### 检查 hook 状态
+
+```bash
+pre-commit run --all-files --verbose
+```
+
+## 📚 扩展阅读
+
+- [Pre-commit 官方文档](https://pre-commit.com/)
+- [Ruff 文档](https://docs.astral.sh/ruff/)
+- [Clang-Format 文档](https://clang.llvm.org/docs/ClangFormat.html)
+- [Bandit 文档](https://bandit.readthedocs.io/)
+
+## 🤝 贡献
+
+如果你想添加新的 hooks 或修改配置：
+
+1. 编辑 `.pre-commit-config.yaml`
+2. 运行 `pre-commit run --all-files` 测试
+3. 提交 PR 并说明修改原因
+
+---
+
+**记住**: Pre-commit hooks 是为了帮助我们，而不是阻碍开发。合理配置可以显著提升代码质量！
