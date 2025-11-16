@@ -6,7 +6,7 @@ import sys
 
 import torch
 
-sys.path.append('..')
+sys.path.append("..")
 
 from src.layers.attention import (
     ATTENTION_IMPLEMENTATIONS,
@@ -42,25 +42,16 @@ def demo_attention_implementations():
 
     # 使用GQA实现
     output_gqa = scaled_dot_product_attention(
-        query, key, value,
-        scale=1.0 / (head_dim ** 0.5),
-        mask="causal",
-        implementation="gqa"
+        query, key, value, scale=1.0 / (head_dim**0.5), mask="causal", implementation="gqa"
     )
     print(f"使用 'gqa' 实现: output shape = {output_gqa.shape}")
 
     # 使用简单实现
-    output_simple = scaled_dot_product_attention(
-        query, key, value,
-        implementation="simple"
-    )
+    output_simple = scaled_dot_product_attention(query, key, value, implementation="simple")
     print(f"使用 'simple' 实现: output shape = {output_simple.shape}")
 
     # 使用参考实现
-    output_ref = scaled_dot_product_attention(
-        query, key, value,
-        implementation="reference"
-    )
+    output_ref = scaled_dot_product_attention(query, key, value, implementation="reference")
     print(f"使用 'reference' 实现: output shape = {output_ref.shape}")
     print()
 
@@ -79,10 +70,7 @@ def demo_attention_implementations():
     print("错误处理演示:")
     print("=" * 60)
     try:
-        scaled_dot_product_attention(
-            query, key, value,
-            implementation="unknown_implementation"
-        )
+        scaled_dot_product_attention(query, key, value, implementation="unknown_implementation")
     except ValueError as e:
         print(f"✓ 捕获到预期的错误: {e}")
     print()
@@ -97,7 +85,7 @@ def demo_gqa_attention():
 
     batch_size = 2
     num_query_heads = 32  # 查询头数
-    num_kv_heads = 8      # KV头数（比查询头数少）
+    num_kv_heads = 8  # KV头数（比查询头数少）
     seq_len = 10
     head_dim = 64
 
@@ -111,11 +99,7 @@ def demo_gqa_attention():
     print(f"Ratio: {num_query_heads // num_kv_heads} query heads per KV head")
     print()
 
-    output = scaled_dot_product_attention(
-        query, key, value,
-        implementation="gqa",
-        mask="causal"
-    )
+    output = scaled_dot_product_attention(query, key, value, implementation="gqa", mask="causal")
 
     print(f"Output shape: {output.shape}")
     print("✓ GQA成功处理不同数量的query和KV heads")
@@ -146,8 +130,7 @@ def demo_dynamic_selection():
     print(f"从配置读取: attention_type = '{config['attention_type']}'")
 
     output = scaled_dot_product_attention(
-        query, key, value,
-        implementation=config["attention_type"]
+        query, key, value, implementation=config["attention_type"]
     )
 
     print(f"使用配置的实现计算attention: output shape = {output.shape}")

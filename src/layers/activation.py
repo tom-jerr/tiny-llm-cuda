@@ -147,7 +147,7 @@ ACTIVATION_IMPLEMENTATIONS: dict[str, Callable] = {
 def get_activation(name: str) -> Callable:
     """
     根据名称获取activation实现函数
-    
+
     Args:
         name: activation实现的名称，支持以下选项：
             - "silu" 或 "swish": SiLU/Swish激活函数
@@ -158,53 +158,45 @@ def get_activation(name: str) -> Callable:
             - "leaky_relu": Leaky ReLU激活函数
             - "mish": Mish激活函数
             - "glu": Gated Linear Unit激活函数
-    
+
     Returns:
         对应的activation实现函数
-    
+
     Raises:
         ValueError: 如果提供的名称不在支持的实现中
-    
+
     Examples:
         >>> act_fn = get_activation("silu")
         >>> output = act_fn(input_tensor)
-        >>> 
         >>> # 直接使用
         >>> output = get_activation("gelu")(input_tensor)
     """
     if name not in ACTIVATION_IMPLEMENTATIONS:
         available = ", ".join(ACTIVATION_IMPLEMENTATIONS.keys())
         raise ValueError(
-            f"Unknown activation implementation: '{name}'. "
-            f"Available options: {available}"
+            f"Unknown activation implementation: '{name}'. " f"Available options: {available}"
         )
     return ACTIVATION_IMPLEMENTATIONS[name]
 
 
-def apply_activation(
-    x: torch.Tensor,
-    activation: str = "silu",
-    **kwargs
-) -> torch.Tensor:
+def apply_activation(x: torch.Tensor, activation: str = "silu", **kwargs) -> torch.Tensor:
     """
     统一的激活函数接口，支持通过字符串选择不同的实现
-    
+
     Args:
         x: Input tensor
-        activation: 激活函数名称，可选 "silu", "relu", "gelu", "tanh", "sigmoid", 
+        activation: 激活函数名称，可选 "silu", "relu", "gelu", "tanh", "sigmoid",
                    "leaky_relu", "mish", "glu"
         **kwargs: 传递给激活函数的额外参数（例如 leaky_relu 的 negative_slope）
-    
+
     Returns:
         Output tensor after applying the activation function
-    
+
     Examples:
         >>> # 使用SiLU激活
         >>> output = apply_activation(x, activation="silu")
-        >>> 
         >>> # 使用Leaky ReLU并指定negative_slope
         >>> output = apply_activation(x, activation="leaky_relu", negative_slope=0.1)
-        >>> 
         >>> # 使用GELU激活
         >>> output = apply_activation(x, activation="gelu")
     """

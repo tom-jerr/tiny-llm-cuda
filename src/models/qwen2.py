@@ -23,15 +23,25 @@ class Qwen2Attention(nn.Module):
         super().__init__()
         self.config = config
 
-        self.head_dim = getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)
+        self.head_dim = getattr(
+            config, "head_dim", config.hidden_size // config.num_attention_heads
+        )
         self.num_key_value_groups = config.num_attention_heads // config.num_key_value_heads
         self.scaling = self.head_dim**-0.5
         self.attention_dropout = config.attention_dropout
         self.is_causal = True
-        self.q_proj = nn.Linear(config.hidden_size, config.num_attention_heads * self.head_dim, bias=True)
-        self.k_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
-        self.v_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
-        self.o_proj = nn.Linear(config.num_attention_heads * self.head_dim, config.hidden_size, bias=False)
+        self.q_proj = nn.Linear(
+            config.hidden_size, config.num_attention_heads * self.head_dim, bias=True
+        )
+        self.k_proj = nn.Linear(
+            config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True
+        )
+        self.v_proj = nn.Linear(
+            config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True
+        )
+        self.o_proj = nn.Linear(
+            config.num_attention_heads * self.head_dim, config.hidden_size, bias=False
+        )
 
         self.rope = RotaryEmbedding(
             self.head_dim, config.max_position_embeddings, config.rope_theta, traditional=False
@@ -102,16 +112,20 @@ class Qwen2MLP(nn.Module):
 class Qwen2TransformerBlock(nn.Module):
     def __init__(
         self,
-       config:Qwen2Config,
-        w_input_layernorm:torch.Tensor,
-        w_post_attention_layernorm:torch.Tensor,
+        config: Qwen2Config,
+        w_input_layernorm: torch.Tensor,
+        w_post_attention_layernorm: torch.Tensor,
     ):
         super().__init__()
         self.hidden_size = config.hidden_size
         self.self_attn = Qwen2Attention(config=config)
         self.mlp = Qwen2MLP(config)
-        self.input_layernorm = RMSNorm(config.hidden_size,weight=w_input_layernorm, eps=config.rms_norm_eps)
-        self.post_attention_layernorm = RMSNorm(config.hidden_size,weight=w_post_attention_layernorm, eps=config.rms_norm_eps)
+        self.input_layernorm = RMSNorm(
+            config.hidden_size, weight=w_input_layernorm, eps=config.rms_norm_eps
+        )
+        self.post_attention_layernorm = RMSNorm(
+            config.hidden_size, weight=w_post_attention_layernorm, eps=config.rms_norm_eps
+        )
 
     def forward(
         self,
@@ -128,7 +142,7 @@ class Qwen2TransformerBlock(nn.Module):
 class Qwen2ModelV1(nn.Module):
     def __init__(
         self,
-        torch_model: Any, # from GPU
+        torch_model: Any,  # from GPU
     ):
         super().__init__()
         # layer constructed in CPU, so we need to transfer device to GPU here
@@ -165,20 +179,34 @@ class Qwen2ModelV1(nn.Module):
 
         for i in range(user_config.num_hidden_layers):
             w_input_layernorm = torch_model.model.layers[i].input_layernorm.weight.to(precision)
-            w_post_attention_layernorm = torch_model.model.layers[i].post_attention_layernorm.weight.to(precision)
+            w_post_attention_layernorm = torch_model.model.layers[
+                i
+            ].post_attention_layernorm.weight.to(precision)
 
-            layer = Qwen2TransformerBlock(
-                config=user_config,
-                w_input_layernorm=w_input_layernorm,
-                w_post_attention_layernorm=w_post_attention_layernorm,
-            ).to(device).to(precision)
+            layer = (
+                Qwen2TransformerBlock(
+                    config=user_config,
+                    w_input_layernorm=w_input_layernorm,
+                    w_post_attention_layernorm=w_post_attention_layernorm,
+                )
+                .to(device)
+                .to(precision)
+            )
 
             # 复制权重到新创建的层
             with torch.no_grad():
-                layer.self_attn.q_proj.weight.copy_(torch_model.model.layers[i].self_attn.q_proj.weight)
-                layer.self_attn.k_proj.weight.copy_(torch_model.model.layers[i].self_attn.k_proj.weight)
-                layer.self_attn.v_proj.weight.copy_(torch_model.model.layers[i].self_attn.v_proj.weight)
-                layer.self_attn.o_proj.weight.copy_(torch_model.model.layers[i].self_attn.o_proj.weight)
+                layer.self_attn.q_proj.weight.copy_(
+                    torch_model.model.layers[i].self_attn.q_proj.weight
+                )
+                layer.self_attn.k_proj.weight.copy_(
+                    torch_model.model.layers[i].self_attn.k_proj.weight
+                )
+                layer.self_attn.v_proj.weight.copy_(
+                    torch_model.model.layers[i].self_attn.v_proj.weight
+                )
+                layer.self_attn.o_proj.weight.copy_(
+                    torch_model.model.layers[i].self_attn.o_proj.weight
+                )
                 layer.self_attn.q_proj.bias.copy_(torch_model.model.layers[i].self_attn.q_proj.bias)
                 layer.self_attn.k_proj.bias.copy_(torch_model.model.layers[i].self_attn.k_proj.bias)
                 layer.self_attn.v_proj.bias.copy_(torch_model.model.layers[i].self_attn.v_proj.bias)

@@ -1,6 +1,7 @@
 """
 idea and most code from tranformers
 """
+
 import json
 from pathlib import Path
 from typing import Any
@@ -62,10 +63,10 @@ class PretrainedConfig:
     def from_pretrained(cls, model_name_or_path: str):
         """
         从预训练模型路径或 HuggingFace 模型加载配置
-        
+
         Args:
             model_name_or_path: 本地路径或 HuggingFace 模型名称
-            
+
         Returns:
             配置实例
         """
@@ -79,6 +80,7 @@ class PretrainedConfig:
         # 尝试从 HuggingFace 加载
         try:
             from transformers import AutoConfig
+
             hf_config = AutoConfig.from_pretrained(model_name_or_path)
             return cls.from_hf_config(hf_config)
         except ImportError:
@@ -98,7 +100,7 @@ class PretrainedConfig:
 class Qwen2Config(PretrainedConfig):
     """
     Qwen2 模型配置类
-    
+
     Args:
         vocab_size: 词汇表大小
         hidden_size: 隐藏层维度
@@ -181,16 +183,18 @@ class Qwen2Config(PretrainedConfig):
             num_hidden_layers=hf_config.num_hidden_layers,
             num_attention_heads=hf_config.num_attention_heads,
             num_key_value_heads=hf_config.num_key_value_heads,
-            hidden_act=getattr(hf_config, 'hidden_act', 'silu'),
+            hidden_act=getattr(hf_config, "hidden_act", "silu"),
             max_position_embeddings=hf_config.max_position_embeddings,
-            initializer_range=getattr(hf_config, 'initializer_range', 0.02),
+            initializer_range=getattr(hf_config, "initializer_range", 0.02),
             rms_norm_eps=hf_config.rms_norm_eps,
             rope_theta=hf_config.rope_theta,
-            rope_scaling=getattr(hf_config, 'rope_scaling', None),
-            attention_dropout=getattr(hf_config, 'attention_dropout', 0.0),
-            tie_word_embeddings=getattr(hf_config, 'tie_word_embeddings', False),
-            use_cache=getattr(hf_config, 'use_cache', True),
-            torch_dtype=str(hf_config.torch_dtype).split('.')[-1] if hasattr(hf_config, 'torch_dtype') else "float32",
+            rope_scaling=getattr(hf_config, "rope_scaling", None),
+            attention_dropout=getattr(hf_config, "attention_dropout", 0.0),
+            tie_word_embeddings=getattr(hf_config, "tie_word_embeddings", False),
+            use_cache=getattr(hf_config, "use_cache", True),
+            torch_dtype=str(hf_config.torch_dtype).split(".")[-1]
+            if hasattr(hf_config, "torch_dtype")
+            else "float32",
         )
 
 

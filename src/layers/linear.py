@@ -16,9 +16,7 @@ def softmax(x: torch.Tensor, axis: int) -> torch.Tensor:
     return torch.softmax(x, dim=axis)
 
 
-def linear(
-    x: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor | None = None
-) -> torch.Tensor:
+def linear(x: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor | None = None) -> torch.Tensor:
     """Apply a linear transformation to the incoming data: y = xW^T + b
 
     Args:

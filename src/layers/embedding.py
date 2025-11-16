@@ -31,6 +31,7 @@ class VocabEmbedding(nn.Module):
     def as_linear(self, x: torch.Tensor) -> torch.Tensor:
         return linear(x, self.weight)
 
+
 class LMHead(VocabEmbedding):
     """Language Model Head, 继承自 VocabEmbeddingLayer，用于将隐藏状态映射回词汇表空间以进行预测。"""
 

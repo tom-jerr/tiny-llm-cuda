@@ -162,7 +162,6 @@ python tests/test_your_feature.py
    ```
 
 4. **创建 Pull Request**
-
    - 在 GitHub 上打开你的 Fork
    - 点击 "New Pull Request"
    - 填写 PR 模板，描述你的更改
@@ -187,14 +186,12 @@ python tests/test_your_feature.py
 提交 Bug 报告时请包含：
 
 1. **环境信息**
-
    - Python 版本
    - PyTorch 版本
    - CUDA 版本
    - 操作系统
 
 2. **重现步骤**
-
    - 清晰的步骤说明
    - 最小可复现代码
    - 期望行为 vs 实际行为
@@ -210,12 +207,10 @@ python tests/test_your_feature.py
 提交功能请求时请包含：
 
 1. **功能描述**
-
    - 清晰描述想要的功能
    - 说明使用场景
 
 2. **动机**
-
    - 为什么需要这个功能
    - 当前的替代方案
 

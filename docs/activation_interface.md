@@ -10,20 +10,20 @@
 ✅ **类型安全**: 完整的类型注解  
 ✅ **易于扩展**: 简单添加新的激活函数实现  
 ✅ **参数支持**: 支持带参数的激活函数（如 Leaky ReLU）  
-✅ **文档完善**: 详细的函数文档和使用示例  
+✅ **文档完善**: 详细的函数文档和使用示例
 
 ## 支持的激活函数
 
-| 名称 | 别名 | 描述 |
-|------|------|------|
-| `silu` | `swish` | SiLU/Swish激活函数: x * sigmoid(x) |
-| `relu` | - | ReLU激活函数: max(0, x) |
-| `gelu` | - | GELU激活函数: x * Φ(x) |
-| `tanh` | - | Tanh激活函数 |
-| `sigmoid` | - | Sigmoid激活函数 |
-| `leaky_relu` | - | Leaky ReLU激活函数 |
-| `mish` | - | Mish激活函数: x * tanh(softplus(x)) |
-| `glu` | - | Gated Linear Unit |
+| 名称         | 别名    | 描述                                 |
+| ------------ | ------- | ------------------------------------ |
+| `silu`       | `swish` | SiLU/Swish激活函数: x \* sigmoid(x)  |
+| `relu`       | -       | ReLU激活函数: max(0, x)              |
+| `gelu`       | -       | GELU激活函数: x \* Φ(x)              |
+| `tanh`       | -       | Tanh激活函数                         |
+| `sigmoid`    | -       | Sigmoid激活函数                      |
+| `leaky_relu` | -       | Leaky ReLU激活函数                   |
+| `mish`       | -       | Mish激活函数: x \* tanh(softplus(x)) |
+| `glu`        | -       | Gated Linear Unit                    |
 
 ## 使用方法
 
@@ -50,8 +50,8 @@ output = apply_activation(input_tensor, activation="silu")
 
 # 带参数的激活函数
 output = apply_activation(
-    input_tensor, 
-    activation="leaky_relu", 
+    input_tensor,
+    activation="leaky_relu",
     negative_slope=0.1
 )
 ```
@@ -80,7 +80,7 @@ class SimpleFeedForward(nn.Module):
         self.w1 = nn.Linear(dim, hidden_dim)
         self.w2 = nn.Linear(hidden_dim, dim)
         self.activation = activation
-    
+
     def forward(self, x):
         x = self.w1(x)
         x = apply_activation(x, activation=self.activation)
@@ -104,7 +104,7 @@ class ConfigurableModel(nn.Module):
         self.linear = nn.Linear(config.hidden_size, config.hidden_size)
         # 从配置中获取激活函数
         self.activation_fn = get_activation(config.activation)
-    
+
     def forward(self, x):
         return self.activation_fn(self.linear(x))
 
@@ -172,12 +172,15 @@ output = apply_activation(x, activation="my_activation")
 根据名称获取激活函数。
 
 **参数:**
+
 - `name` (str): 激活函数名称
 
 **返回:**
+
 - `Callable`: 对应的激活函数
 
 **异常:**
+
 - `ValueError`: 如果提供的名称不存在
 
 ### `apply_activation(x: torch.Tensor, activation: str = "silu", **kwargs) -> torch.Tensor`
@@ -185,11 +188,13 @@ output = apply_activation(x, activation="my_activation")
 统一的激活函数应用接口。
 
 **参数:**
+
 - `x` (torch.Tensor): 输入张量
 - `activation` (str): 激活函数名称，默认 "silu"
 - `**kwargs`: 传递给激活函数的额外参数
 
 **返回:**
+
 - `torch.Tensor`: 应用激活函数后的张量
 
 ## 运行示例

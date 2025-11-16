@@ -38,9 +38,7 @@ def simple_generate(
         if sampler is not None:
             next_token = sampler(logits)
         else:
-            next_token = torch.argmax(
-                logits, dim=-1, keepdim=True
-            )  # Greedy decoding: keep (N, 1)
+            next_token = torch.argmax(logits, dim=-1, keepdim=True)  # Greedy decoding: keep (N, 1)
         return next_token
 
     # Setup

@@ -42,13 +42,13 @@ BinPackParameters: true
 SortIncludes: CaseSensitive
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<torch/'
+  - Regex: "^<torch/"
     Priority: 1
-  - Regex: '^<cuda'
+  - Regex: "^<cuda"
     Priority: 2
-  - Regex: '^<'
+  - Regex: "^<"
     Priority: 3
-  - Regex: '.*'
+  - Regex: ".*"
     Priority: 4
 
 # 注释

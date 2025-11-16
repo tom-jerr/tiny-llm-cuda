@@ -9,7 +9,7 @@ import sys
 
 import torch
 
-sys.path.append('..')
+sys.path.append("..")
 
 from src.layers.activation import apply_activation, get_activation
 

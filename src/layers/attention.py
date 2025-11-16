@@ -33,19 +33,13 @@ def scaled_dot_product_attention_simple(
         query, key.transpose(-2, -1)
     )  # (batch_size, num_heads, seq_len_q, seq_len_k)
     scores = q_k / (
-        scale
-        if scale is not None
-        else torch.sqrt(torch.tensor(query.shape[-1], dtype=query.dtype))
+        scale if scale is not None else torch.sqrt(torch.tensor(query.shape[-1], dtype=query.dtype))
     )
     if mask is not None:
         scores = scores.masked_fill(mask == 0, float("-inf"))
     # 每个 query 对所有 key 的相似度 转换为一个概率分布
-    attn_weights = softmax(
-        scores, axis=-1
-    )  # (batch_size, num_heads, seq_len_q, seq_len_k)
-    output = torch.matmul(
-        attn_weights, value
-    )  # (batch_size, num_heads, seq_len_q, depth_v)
+    attn_weights = softmax(scores, axis=-1)  # (batch_size, num_heads, seq_len_q, seq_len_k)
+    output = torch.matmul(attn_weights, value)  # (batch_size, num_heads, seq_len_q, depth_v)
     return output
 
 
@@ -103,21 +97,15 @@ class SimpleMultiHeadAttention(nn.Module):
             .transpose(1, 2)  # (N, H, L, D), 每个头单独计算注意力
         )
         projection_k = (
-            linear(key, self.wk)
-            .reshape(N, L, self.num_heads, self.head_dim)
-            .transpose(1, 2)
+            linear(key, self.wk).reshape(N, L, self.num_heads, self.head_dim).transpose(1, 2)
         )
         projection_v = (
-            linear(value, self.wv)
-            .reshape(N, L, self.num_heads, self.head_dim)
-            .transpose(1, 2)
+            linear(value, self.wv).reshape(N, L, self.num_heads, self.head_dim).transpose(1, 2)
         )
         x = scaled_dot_product_attention_simple(
             projection_q, projection_k, projection_v, self.scale, mask
         )  # (N, H, L, D)
-        x = x.transpose(1, 2).reshape(
-            N, L, self.num_heads * self.head_dim
-        )  # (N, L, H*D)
+        x = x.transpose(1, 2).reshape(N, L, self.num_heads * self.head_dim)  # (N, L, H*D)
         return linear(x, self.wo)  # (N, L, E)
 
 
@@ -207,9 +195,7 @@ def ref_scaled_dot_product_attention(
     attn_bias = torch.zeros(L, S, dtype=query.dtype, device=query.device)
     if is_causal:
         assert attn_mask is None
-        temp_mask = torch.ones(L, S, dtype=torch.bool, device=query.device).tril(
-            diagonal=S - L
-        )
+        temp_mask = torch.ones(L, S, dtype=torch.bool, device=query.device).tril(diagonal=S - L)
         attn_bias.masked_fill_(temp_mask.logical_not(), float("-inf"))
 
     if attn_mask is not None:
@@ -244,19 +230,19 @@ ATTENTION_IMPLEMENTATIONS: dict[str, Callable] = {
 def get_attention(name: str) -> Callable:
     """
     根据名称获取attention实现函数
-    
+
     Args:
         name: attention实现的名称，支持以下选项：
             - "simple": 简单的多头注意力实现
             - "grouped" 或 "gqa": 分组查询注意力(GQA)实现
             - "reference" 或 "ref": PyTorch参考实现
-    
+
     Returns:
         对应的attention实现函数
-    
+
     Raises:
         ValueError: 如果提供的名称不在支持的实现中
-    
+
     Examples:
         >>> attn_fn = get_attention_implementation("gqa")
         >>> output = attn_fn(query, key, value, scale=0.125)
@@ -264,8 +250,7 @@ def get_attention(name: str) -> Callable:
     if name not in ATTENTION_IMPLEMENTATIONS:
         available = ", ".join(ATTENTION_IMPLEMENTATIONS.keys())
         raise ValueError(
-            f"Unknown attention implementation: '{name}'. "
-            f"Available options: {available}"
+            f"Unknown attention implementation: '{name}'. " f"Available options: {available}"
         )
     return ATTENTION_IMPLEMENTATIONS[name]
 
@@ -280,7 +265,7 @@ def scaled_dot_product_attention(
 ) -> torch.Tensor:
     """
     统一的注意力接口，支持通过字符串选择不同的实现
-    
+
     Args:
         query: Query tensor of shape (batch_size, num_heads, seq_len_q, depth)
         key: Key tensor of shape (batch_size, num_heads, seq_len_k, depth)
@@ -288,14 +273,13 @@ def scaled_dot_product_attention(
         scale: Scaling factor. If None, defaults to implementation-specific default
         mask: Mask tensor or "causal" string
         implementation: 实现方式，可选 "simple", "gqa", "ref"
-    
+
     Returns:
         Output tensor of shape (batch_size, num_heads, seq_len_q, depth_v)
-    
+
     Examples:
         >>> # 使用GQA实现
         >>> output = scaled_dot_product_attention(q, k, v, implementation="gqa")
-        >>> 
         >>> # 使用简单实现
         >>> output = scaled_dot_product_attention(q, k, v, implementation="simple")
     """

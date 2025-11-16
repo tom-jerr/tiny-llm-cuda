@@ -67,9 +67,7 @@ class BatchingKvCache(TinyKvCache):
             if self.kv_caches[b] is None:
                 continue
             key, value = keys[b : b + 1], values[b : b + 1]
-            new_key, new_value, seq_len, old_mask = self.kv_caches[b].update_and_fetch(
-                key, value
-            )
+            new_key, new_value, seq_len, old_mask = self.kv_caches[b].update_and_fetch(key, value)
             data[b] = (new_key[0], new_value[0], seq_len, old_mask)
             max_seq_len = max(max_seq_len, seq_len)
 

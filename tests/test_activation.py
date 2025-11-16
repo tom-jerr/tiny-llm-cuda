@@ -7,7 +7,7 @@ import sys
 import pytest
 import torch
 
-sys.path.append('..')
+sys.path.append("..")
 
 from src.layers.activation import (
     ACTIVATION_IMPLEMENTATIONS,
@@ -66,11 +66,15 @@ def test_activation_correctness():
 
     # Tanh: [-1, 1]
     tanh_output = apply_activation(x, activation="tanh")
-    assert torch.all(tanh_output >= -1.0) and torch.all(tanh_output <= 1.0), "Tanh should be in [-1, 1]"
+    assert torch.all(tanh_output >= -1.0) and torch.all(
+        tanh_output <= 1.0
+    ), "Tanh should be in [-1, 1]"
 
     # Sigmoid: [0, 1]
     sigmoid_output = apply_activation(x, activation="sigmoid")
-    assert torch.all(sigmoid_output >= 0.0) and torch.all(sigmoid_output <= 1.0), "Sigmoid should be in [0, 1]"
+    assert torch.all(sigmoid_output >= 0.0) and torch.all(
+        sigmoid_output <= 1.0
+    ), "Sigmoid should be in [0, 1]"
 
 
 def test_leaky_relu_parameters():
@@ -81,7 +85,9 @@ def test_leaky_relu_parameters():
     output2 = apply_activation(x, activation="leaky_relu", negative_slope=0.2)
 
     # 负值部分应该不同
-    assert not torch.allclose(output1, output2), "Different negative_slope should give different outputs"
+    assert not torch.allclose(
+        output1, output2
+    ), "Different negative_slope should give different outputs"
 
 
 def test_gradient_flow():

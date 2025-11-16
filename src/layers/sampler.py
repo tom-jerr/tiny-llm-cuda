@@ -1,4 +1,3 @@
-
 import torch
 
 from .linear import softmax
@@ -19,27 +18,19 @@ def make_sampler(temp: float, top_p: float, top_k: int | None):
             logprobs = logprobs / temp
             if top_p is not None and 0.0 < top_p < 1.0:
                 # 1. sort the logprobs from largest to smallest
-                sorted_logprobs, sorted_indices = torch.sort(
-                    logprobs, descending=True, dim=-1
-                )
+                sorted_logprobs, sorted_indices = torch.sort(logprobs, descending=True, dim=-1)
                 # 2. compute cumulative probabilities
-                cumulative_probs = torch.cumsum(
-                    softmax(sorted_logprobs, axis=-1), dim=-1
-                )
+                cumulative_probs = torch.cumsum(softmax(sorted_logprobs, axis=-1), dim=-1)
                 # 3. truncate tokens with cumulative prob above the threshold
                 sorted_indices_to_remove = cumulative_probs > top_p
                 # Keep the first token above the threshold
                 if sorted_indices_to_remove[..., 1:].any():
-                    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
-                        ..., :-1
-                    ].clone()
+                    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
                     sorted_indices_to_remove[..., 0] = (
                         False  # like [False, False, True(keep last), True, True...]
                     )
 
-                indices_to_remove = torch.zeros_like(
-                    logprobs, dtype=torch.bool
-                ).scatter_(
+                indices_to_remove = torch.zeros_like(logprobs, dtype=torch.bool).scatter_(
                     dim=-1,
                     index=sorted_indices,
                     src=sorted_indices_to_remove,
@@ -52,9 +43,7 @@ def make_sampler(temp: float, top_p: float, top_k: int | None):
                 )
             elif top_k is not None and top_k > 0:
                 topk_logprobs, _ = torch.topk(logprobs, k=top_k, dim=-1)
-                min_topk_logprob = topk_logprobs[
-                    ..., -1, None
-                ]  # 取 seq 维度的最后一个值(即最小值)
+                min_topk_logprob = topk_logprobs[..., -1, None]  # 取 seq 维度的最后一个值(即最小值)
                 logprobs = torch.where(
                     logprobs < min_topk_logprob,
                     torch.full_like(logprobs, float("-inf")),

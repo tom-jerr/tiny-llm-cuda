@@ -16,9 +16,7 @@ class RotaryEmbedding(nn.Module):
         self.half_dims = dims // 2
         self.max_position_embeddings = max_position_embeddings
         self.traditional = traditional
-        inv_freq = 1.0 / (
-            base ** (torch.arange(0, dims, 2, dtype=torch.float32) / dims)
-        )
+        inv_freq = 1.0 / (base ** (torch.arange(0, dims, 2, dtype=torch.float32) / dims))
         positions = torch.arange(max_position_embeddings, dtype=torch.float32)
         freqs: torch.Tensor = torch.einsum("i,j->ij", positions, inv_freq)
         cos = freqs.cos()
@@ -26,25 +24,17 @@ class RotaryEmbedding(nn.Module):
         cache = torch.cat((cos, sin), dim=-1)  # [seq_len, head_dim]
         self.register_buffer("cos_sin_cache", cache, persistent=False)
 
-    def forward(
-        self, x: torch.Tensor, offset: list[slice] | slice | None = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, offset: list[slice] | slice | None = None) -> torch.Tensor:
         B, S, H, D = x.shape
         # [S, D] -> [1, S, D]
         if offset is None:
             cos_sin = self.cos_sin_cache[:S].unsqueeze(0).to(x.device)
         elif isinstance(offset, slice):
-            assert (
-                offset.stop - offset.start == S
-            ), "Offset slice length must match sequence length"
+            assert offset.stop - offset.start == S, "Offset slice length must match sequence length"
             cos_sin = self.cos_sin_cache[offset].unsqueeze(0).to(x.device)
         elif isinstance(offset, list):
-            assert (
-                len(offset) == B
-            ), "Number of slices in offset list must match batch size"
-            cos_sin = torch.stack([self.cos_sin_cache[s] for s in offset], dim=0).to(
-                x.device
-            )
+            assert len(offset) == B, "Number of slices in offset list must match batch size"
+            cos_sin = torch.stack([self.cos_sin_cache[s] for s in offset], dim=0).to(x.device)
         else:
             raise TypeError(f"Unsupported type for offset: {type(offset)}")
 
@@ -71,4 +61,3 @@ class RotaryEmbedding(nn.Module):
             y = torch.cat((real, imag), dim=-1)
             y = y.reshape(B, S, H, D)
         return y.type_as(x)
-

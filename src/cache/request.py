@@ -29,9 +29,7 @@ class Request:
         self.kv_cache = [TinyKvFullCache() for _ in range(model.num_hidden_layers)]
         self.model = model
         self.tokenizer = tokenizer
-        self.prefill_tokens = tokenizer(prompt, return_tensors="pt").input_ids.to(
-            self.device
-        )
+        self.prefill_tokens = tokenizer(prompt, return_tensors="pt").input_ids.to(self.device)
         self.prefill_max_step = prefill_max_step
         self.is_done = False
         self.is_prefill_done = False
@@ -50,9 +48,7 @@ class Request:
         """
         if self.is_prefill_done:
             raise ValueError("prefill called after done")
-        tokens_to_prefill = min(
-            self.prefill_max_step, self.prefill_tokens.size(-1) - self.offset
-        )
+        tokens_to_prefill = min(self.prefill_max_step, self.prefill_tokens.size(-1) - self.offset)
         token = _step(
             self.model,
             self.prefill_tokens[:, self.offset : self.offset + tokens_to_prefill],
@@ -109,8 +105,7 @@ def _print_progress(
             )
             return
         precentage = (
-            pending_prefill_request.offset
-            / pending_prefill_request.prefill_tokens.size(-1)
+            pending_prefill_request.offset / pending_prefill_request.prefill_tokens.size(-1)
         ) * 100
         print(
             f"{animation_frame} Prefill [req {pending_prefill_request.prompt_idx}]: {precentage:.2f}% ({pending_prefill_request.prefill_tokens.size(-1) - pending_prefill_request.offset} remaining tokens)",
@@ -164,9 +159,7 @@ def batch_generate(
                     if is_idle[i]:
                         # Add this request to the decode requests
                         is_idle[i] = False
-                        for prefill_cache, batch_cache in zip(
-                            prefill_kv_cache, kv_cache
-                        ):
+                        for prefill_cache, batch_cache in zip(prefill_kv_cache, kv_cache):
                             batch_cache.add_request(prefill_cache, i)
                         decode_requests[i] = pending_prefill_request
                         found_slot = True
@@ -208,9 +201,7 @@ def batch_generate(
                     elif req.offset >= max_seq_len:
                         remove_reason = "max seq len"
                     if remove_reason is not None:
-                        print(
-                            f"Removing request {i} due to {remove_reason}", flush=True
-                        )
+                        print(f"Removing request {i} due to {remove_reason}", flush=True)
                         for batch_cache in kv_cache:
                             batch_cache.remove_request(i)
                         is_idle[i] = True
