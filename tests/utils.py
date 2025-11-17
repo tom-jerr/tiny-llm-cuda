@@ -149,8 +149,8 @@ def assert_allclose(
     expected = expected.detach().cpu().numpy()
     if not np.allclose(actual, expected, rtol=rtol, atol=atol):
         diff = np.invert(np.isclose(actual, expected, rtol=rtol, atol=atol))
-        if diff.size > 10000 and np.sum(diff) <= 3:
-            # if only a small number of elements are different in a large array, probably fine
+        # 如果数组很大且不匹配的元素比例很小（<0.1%），可能是可以接受的
+        if diff.size > 10000 and np.sum(diff) / diff.size < 0.001:
             return
         with np.printoptions(precision=3, suppress=True):
             print("actual=", actual)

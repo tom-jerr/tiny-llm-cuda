@@ -1,7 +1,9 @@
-from ..models import (
-    Qwen2ModelV1,
-    # Qwen2ModelV2,
-)
+from __future__ import annotations
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.engine.request import Request
 
 
 def shortcut_name_to_full_name(shortcut_name: str):
@@ -25,12 +27,53 @@ def shortcut_name_to_full_name(shortcut_name: str):
 
 
 def dispatch_model(model_name: str, torch_model, version: int, **kwargs):
+    # Import here to avoid circular import
+    from ..models import Qwen2Model
+
     model_name = shortcut_name_to_full_name(model_name)
     if version == 1 and model_name.startswith("Qwen/Qwen2"):
-        return Qwen2ModelV1(torch_model, **kwargs)
-    # elif version == 2 and model_name.startswith("Qwen/Qwen2"):
-    #     return Qwen2ModelV2(torch_model, **kwargs)
+        return Qwen2Model(torch_model, **kwargs)
+    elif version == 2 and model_name.startswith("Qwen/Qwen2"):
+        return Qwen2Model(torch_model, **kwargs)
     # elif week == 2 and model_name.startswith("mlx-community/Qwen3"):
     #     return Qwen3Model(torch_model, **kwargs)
     else:
         raise ValueError(f"{model_name} for version {version} not supported")
+
+
+def _print_progress(
+    requests: list[Request | None],
+    is_idle: list[bool],
+    pending_prefill_request: Request | None,
+    queue_size: int,
+    progress_cnt: int,
+    start_time: datetime,
+):
+    print(f"  --- {datetime.now() - start_time}")
+    animation_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    animation_frame = animation_frames[progress_cnt % len(animation_frames)]
+    for i in range(len(requests)):
+        if is_idle[i]:
+            print(f"  Decode #{i}: idle", flush=True)
+        else:
+            text_preview = requests[i].text()[-80:].replace("\n", " ")
+            print(
+                f"{animation_frame} Decode [req {requests[i].prompt_idx}, {requests[i].offset}]: {text_preview}",
+                flush=True,
+            )
+    if pending_prefill_request is not None:
+        if pending_prefill_request.is_prefill_done:
+            print(
+                f"  Prefill [req {pending_prefill_request.prompt_idx}]: done, waiting for slot, {queue_size} requests in queue",
+                flush=True,
+            )
+            return
+        precentage = (
+            pending_prefill_request.offset / pending_prefill_request.prefill_tokens.size(-1)
+        ) * 100
+        print(
+            f"{animation_frame} Prefill [req {pending_prefill_request.prompt_idx}]: {precentage:.2f}% ({pending_prefill_request.prefill_tokens.size(-1) - pending_prefill_request.offset} remaining tokens)",
+            flush=True,
+        )
+    else:
+        print(f"  Prefill: idle, {queue_size} requests in queue", flush=True)

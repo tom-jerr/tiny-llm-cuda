@@ -2,10 +2,8 @@ import pytest
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from .tinyllm_base import (
-    Qwen2ModelV2,
-    TinyKvFullCache,
-)
+from src.models.qwen2 import Qwen2Model
+from src.engine.kv_cache import TinyKvFullCache, BatchingKvCache
 from .utils import *
 
 # --- PyTorch 设备设置 ---
@@ -19,10 +17,10 @@ def helper_test_task_3(model_name: str, iters: int = 10):
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    model = Qwen2ModelV2(torch_model)
+    model = Qwen2Model(torch_model)
     torch.manual_seed(42)
     for _ in range(iters):
-        cache = [TinyKvFullCache() for _ in range(model.num_hidden_layers)]
+        cache = [TinyKvFullCache() for _ in range(model.config.num_hidden_layers)]
 
         input_tensor = torch.randint(
             low=0,
@@ -32,7 +30,7 @@ def helper_test_task_3(model_name: str, iters: int = 10):
             device=device,
         )
 
-        user_output = model(input_tensor, 0, cache)
+        user_output, _ = model(input_tensor, offset=None, cache=cache, use_cache=True)
         user_output = user_output - torch.logsumexp(user_output, dim=-1, keepdim=True)
 
         ref_output = torch_model(input_tensor).logits
@@ -59,10 +57,10 @@ def helper_test_task_4(model_name: str, seq_len: int, iters: int = 1):
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    model = Qwen2ModelV2(torch_model)
+    model = Qwen2Model(torch_model)
     torch.manual_seed(42)
     for _ in range(iters):
-        cache = [TinyKvFullCache() for _ in range(model.num_hidden_layers)]
+        cache = [TinyKvFullCache() for _ in range(model.config.num_hidden_layers)]
 
         input_tensor = torch.randint(
             low=0,
@@ -74,13 +72,18 @@ def helper_test_task_4(model_name: str, seq_len: int, iters: int = 1):
 
         ref_outputs = torch_model(input_tensor)
         for offset in range(seq_len):
-            user_output = model(input_tensor[:, offset : offset + 1], offset, cache)
+            user_output, _ = model(
+                input_tensor[:, offset : offset + 1],
+                offset=offset,
+                cache=cache,
+                use_cache=True,
+            )
+            user_output = user_output.squeeze(1)  # (B, 1, vocab_size) -> (B, vocab_size)
             user_output = user_output - torch.logsumexp(user_output, dim=-1, keepdim=True)
 
             ref_output = ref_outputs.logits[:, offset, :]
             ref_output = ref_output - torch.logsumexp(ref_output, dim=-1, keepdim=True)
 
-            # 假设 assert_allclose 现在使用 torch.allclose
             assert_allclose(user_output, ref_output, precision=torch.float16, rtol=0.1)
 
 

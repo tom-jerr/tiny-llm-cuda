@@ -7,7 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # argument parsing
 # =============================
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", type=str, default="Qwen/Qwen2-1.5B")
+parser.add_argument("--model", type=str, default="Qwen/Qwen2-0.5B-Instruct")
 parser.add_argument("--draft-model", type=str, default=None)
 parser.add_argument(
     "--prompt",
@@ -30,11 +30,13 @@ use_transformers = False
 # =============================
 if args.solution == "tinyllm":
     print("Using your tinyllm solution")
-    from tests.tinyllm_base import (
+    from src import (
         dispatch_model,
         # speculative_generate,
         make_sampler,
         shortcut_name_to_full_name,
+    )
+    from src.engine.generate import (
         simple_generate,
         simple_generate_with_kv_cache,
     )

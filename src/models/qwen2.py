@@ -1,8 +1,9 @@
-from typing import Any
+from typing import Any, Optional
 
 import torch
 import torch.nn as nn
 
+from ..engine.kv_cache import TinyKvCache, TinyKvFullCache
 from ..layers import (
     LMHead,
     RMSNorm,
@@ -44,18 +45,30 @@ class Qwen2Attention(nn.Module):
         )
 
         self.rope = RotaryEmbedding(
-            self.head_dim, config.max_position_embeddings, config.rope_theta, traditional=False
+            self.head_dim,
+            config.max_position_embeddings,
+            config.rope_theta,
+            traditional=False,
         )  # Qwen2 uses nontraditional RoPE
 
     def forward(
         self,
         hidden_states: torch.Tensor,
+        past_key_value: Optional[TinyKvCache] = None,
         mask: torch.Tensor | str | None = None,
-    ) -> torch.Tensor:
+        use_cache: bool = False,
+        offset: Optional[int] = None,
+    ) -> tuple[torch.Tensor, Optional[TinyKvCache]]:
         """
         Args:
             hidden_states: (B, L, E)
+            past_key_value: cache for this layer
             mask: (B, 1, L, S) or "causal" or None
+            use_cache: whether to return updated cache
+            offset: manual position offset (for backward compatibility)
+
+        Returns:
+            tuple of (attn_output, updated_cache)
         """
         input_shape = hidden_states.shape[:-1]
         # [B, S, H] → [B, S, num_heads, head_dim]
@@ -66,14 +79,34 @@ class Qwen2Attention(nn.Module):
         key_states = self.k_proj(hidden_states).view(hidden_shape)
         value_states = self.v_proj(hidden_states).view(hidden_shape)
 
+        # Calculate position offset for RoPE
+        # Priority: manual offset > cache.offset > 0
+        if offset is not None:
+            position_offset = offset
+        elif past_key_value is not None and hasattr(past_key_value, "offset"):
+            position_offset = past_key_value.offset
+        else:
+            position_offset = 0
+
         # rope
-        query_states = self.rope(query_states, offset=slice(0, input_shape[1]))
-        key_states = self.rope(key_states, offset=slice(0, input_shape[1]))
+        query_states = self.rope(
+            query_states,
+            offset=slice(position_offset, position_offset + input_shape[1]),
+        )
+        key_states = self.rope(
+            key_states, offset=slice(position_offset, position_offset + input_shape[1])
+        )
 
         # [B, S, num_heads, head_dim] -> [B, num_heads, S, head_dim]
         query_states = query_states.transpose(1, 2)
         key_states = key_states.transpose(1, 2)
         value_states = value_states.transpose(1, 2)
+
+        # Update cache if provided
+        if past_key_value is not None:
+            key_states, value_states, _, mask = past_key_value.update_and_fetch(
+                key_states, value_states, mask_length=input_shape[1], mask=mask
+            )
 
         attn_output = get_attention("gqa")(
             query_states,
@@ -86,7 +119,8 @@ class Qwen2Attention(nn.Module):
         # need to transpose to [B, S, num_heads, head_dim] then reshape to [B, S, hidden_size]
         attn_output = attn_output.transpose(1, 2).reshape(*input_shape, -1).contiguous()
         attn_output = self.o_proj(attn_output)
-        return attn_output
+
+        return attn_output, past_key_value if use_cache else None
 
 
 class Qwen2MLP(nn.Module):
@@ -124,22 +158,33 @@ class Qwen2TransformerBlock(nn.Module):
             config.hidden_size, weight=w_input_layernorm, eps=config.rms_norm_eps
         )
         self.post_attention_layernorm = RMSNorm(
-            config.hidden_size, weight=w_post_attention_layernorm, eps=config.rms_norm_eps
+            config.hidden_size,
+            weight=w_post_attention_layernorm,
+            eps=config.rms_norm_eps,
         )
 
     def forward(
         self,
         x: torch.Tensor,
+        past_key_value: Optional[TinyKvCache] = None,
         mask: torch.Tensor | str | None = None,
-    ) -> torch.Tensor:
-        r = self.self_attn(self.input_layernorm(x), mask)
-        h = x + r
+        use_cache: bool = False,
+        offset: Optional[int] = None,
+    ) -> tuple[torch.Tensor, Optional[TinyKvCache]]:
+        attn_output, updated_cache = self.self_attn(
+            self.input_layernorm(x),
+            past_key_value=past_key_value,
+            mask=mask,
+            use_cache=use_cache,
+            offset=offset,
+        )
+        h = x + attn_output
         r = self.mlp(self.post_attention_layernorm(h))
         out = h + r
-        return out
+        return out, updated_cache
 
 
-class Qwen2ModelV1(nn.Module):
+class Qwen2Model(nn.Module):
     def __init__(
         self,
         torch_model: Any,  # from GPU
@@ -233,15 +278,55 @@ class Qwen2ModelV1(nn.Module):
     def forward(
         self,
         inputs: torch.Tensor,
-    ) -> torch.Tensor:
+        offset: Optional[int] = None,
+        cache: Optional[list[TinyKvCache]] = None,  # 旧接口：位置参数
+        past_key_values: Optional[list[TinyKvCache]] = None,  # 新接口：关键字参数
+        use_cache: bool = False,
+        mask: torch.Tensor | str | None = "causal",
+    ) -> tuple[torch.Tensor, Optional[list[TinyKvCache]]]:
+        """
+        Args:
+            inputs: input token ids (B, L)
+            offset: position offset for RoPE (for backward compatibility)
+            cache: list of caches (old interface, positional arg)
+            past_key_values: list of caches for each layer (new interface, keyword arg)
+            use_cache: whether to return updated caches
+            mask: attention mask
+
+        Returns:
+            tuple of (logits, updated_caches)
+
+        Calling conventions:
+            Old: model(inputs, offset, cache, use_cache=True)
+            New: model(inputs, past_key_values=cache, use_cache=True)
+        """
         h = self.embedding(inputs)
-        for layer in self.layers_inner:
-            h = layer(h, mask="causal")
+
+        # Handle backward compatibility: cache (positional) takes precedence over past_key_values (keyword)
+        if cache is not None:
+            past_key_values = cache
+
+        # Initialize caches if needed
+        if use_cache and past_key_values is None:
+            past_key_values = [TinyKvFullCache() for _ in range(len(self.layers_inner))]
+
+        updated_caches = [] if use_cache else None
+
+        for idx, layer in enumerate(self.layers_inner):
+            past_kv = past_key_values[idx] if past_key_values is not None else None
+            h, updated_cache = layer(
+                h, past_key_value=past_kv, mask=mask, use_cache=use_cache, offset=offset
+            )
+            if use_cache:
+                updated_caches.append(updated_cache)
+
         h = self.norm(h)
         if self.w_lm_head is not None:
-            return linear(h, self.w_lm_head)
+            logits = linear(h, self.w_lm_head)
         else:
-            return self.embedding.as_linear(h)
+            logits = self.embedding.as_linear(h)
+
+        return logits, updated_caches if use_cache else None
 
 
 # from ..cache.kv_cache import TinyKvCache

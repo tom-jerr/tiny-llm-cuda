@@ -121,7 +121,7 @@ def helper_test_task_3(model_name: str, iters: int = 10):
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    model = qwen2.Qwen2ModelV1(torch_model)
+    model = qwen2.Qwen2Model(torch_model)
 
     with torch.no_grad():
         for _ in range(iters):

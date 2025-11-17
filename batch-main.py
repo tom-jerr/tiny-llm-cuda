@@ -4,8 +4,8 @@ import random
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from src.cache.request import batch_generate
-from src.models.qwen2 import Qwen2ModelV2
+from src.engine.request import batch_generate
+from src.models.qwen2 import Qwen2Model
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="Qwen/Qwen2-0.5B-Instruct")
@@ -63,7 +63,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     # Wrap with our custom model
-    tiny_llm_model = Qwen2ModelV2(torch_model)
+    tiny_llm_model = Qwen2Model(torch_model)
 
     # Prepare prompts with chat template
     encoded_prompts = []

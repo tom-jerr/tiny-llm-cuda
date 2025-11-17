@@ -3,12 +3,12 @@ from collections.abc import Callable
 import torch
 from transformers import PreTrainedTokenizer
 
-from ..models.qwen2 import Qwen2ModelV1, Qwen2ModelV2
+from ..models.qwen2 import Qwen2Model
 from .kv_cache import TinyKvFullCache
 
 
 def simple_generate(
-    model: Qwen2ModelV1,
+    model: Qwen2Model,
     tokenizer: PreTrainedTokenizer,
     prompt: str,
     sampler: Callable[[torch.Tensor], torch.Tensor] | None = None,
@@ -31,7 +31,7 @@ def simple_generate(
 
     def _step(model, y):
         # Forward pass through model: y (N, S) -> output_logits (N, S, vocab_size)
-        output_logits = model(y)
+        output_logits, _ = model(y)
         logits = output_logits[:, -1, :]  # (N, S, vocab_size) -> (N, vocab_size)
         logits = logits - torch.logsumexp(logits, dim=-1, keepdim=True)
         # Sample next token
@@ -56,20 +56,22 @@ def simple_generate(
 
 
 def simple_generate_with_kv_cache(
-    model: Qwen2ModelV2,
+    model: Qwen2Model,
     tokenizer: PreTrainedTokenizer,
     prompt: str,
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
 ) -> str:
-    kv_cache = [TinyKvFullCache() for _ in range(model.num_hidden_layers)]
+    kv_cache = [TinyKvFullCache() for _ in range(model.config.num_hidden_layers)]
 
     def _step(model, y, offset, cache):
-        output_logits = model(y, offset=offset, cache=cache)
+        output_logits, updated_cache = model(
+            y, offset=offset, past_key_values=cache, use_cache=True
+        )
         logits = output_logits[:, -1, :]
         logits = logits - torch.logsumexp(logits, dim=-1, keepdim=True)
         sample = lambda x: torch.argmax(x, dim=-1, keepdim=True)
         next_token = sample(logits)
-        return next_token
+        return next_token, updated_cache
 
     model.eval().to(device)
     tokens = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
@@ -77,7 +79,7 @@ def simple_generate_with_kv_cache(
     offset = 0
     with torch.no_grad():
         while True:
-            next_token = _step(model, tokens, offset, kv_cache)
+            next_token, kv_cache = _step(model, tokens, offset, kv_cache)
             if next_token.item() == tokenizer.eos_token_id:
                 break
             output.append(next_token.item())

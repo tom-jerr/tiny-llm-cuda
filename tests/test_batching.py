@@ -3,7 +3,7 @@ import pytest
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from src.cache.kv_cache import BatchingKvCache
+from src.engine.kv_cache import BatchingKvCache
 
 from .tinyllm_base import *
 from .utils import *

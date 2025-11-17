@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from .attention import causal_mask
+from src import causal_mask
 
 
 class TinyKvCache(ABC):
@@ -29,13 +29,8 @@ class TinyKvCache(ABC):
 
 
 class BatchingKvCache(TinyKvCache):
-    """
-    填充 batched_keys 和 batched_values 数组，以便每个请求的数据在末尾对齐
-    batched_keys[i, :, (S-S_i):S, :] = keys[i, :, :, :]
-    batched_values[i, :, (S-S_i):S, :] = values[i, :, :, :]
-    mask[i, :, 0:L, (S-S_i):S] = causal_mask(L, S_i)
-    尾部对齐允许所有不同长度的序列共享一个静态的标准因果掩码，这比为每个请求动态生成一个独特掩码要高效得多。
-    尾部对齐使得滑动窗口注意力的实现变得极其简单和统一
+    """A KV cache that supports batching multiple requests with different sequence lengths.
+    Just padding the keys and values to the `max_seq_len` in the batch.
     """
 
     def __init__(self, max_active_requests: int, max_seq_len: int):
@@ -137,6 +132,8 @@ class BatchingKvCache(TinyKvCache):
 
 
 class TinyKvFullCache:
+    """The simplest KV cache that keeps all keys and values in memory"""
+
     def __init__(self):
         self.key_values = None
         self.offset = 0
