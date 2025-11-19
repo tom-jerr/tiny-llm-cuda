@@ -26,19 +26,12 @@ def shortcut_name_to_full_name(shortcut_name: str):
         return shortcut_name
 
 
-def dispatch_model(model_name: str, torch_model, version: int, **kwargs):
+def make_model(model_name: str, torch_model, **kwargs):
     # Import here to avoid circular import
     from ..models import Qwen2Model
 
     model_name = shortcut_name_to_full_name(model_name)
-    if version == 1 and model_name.startswith("Qwen/Qwen2"):
-        return Qwen2Model(torch_model, **kwargs)
-    elif version == 2 and model_name.startswith("Qwen/Qwen2"):
-        return Qwen2Model(torch_model, **kwargs)
-    # elif week == 2 and model_name.startswith("mlx-community/Qwen3"):
-    #     return Qwen3Model(torch_model, **kwargs)
-    else:
-        raise ValueError(f"{model_name} for version {version} not supported")
+    return Qwen2Model(torch_model, **kwargs)
 
 
 def _print_progress(

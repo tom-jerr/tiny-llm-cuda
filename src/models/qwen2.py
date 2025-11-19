@@ -57,7 +57,7 @@ class Qwen2Attention(nn.Module):
         past_key_value: Optional[TinyKvCache] = None,
         mask: torch.Tensor | str | None = None,
         use_cache: bool = False,
-        offset: Optional[int] = None,
+        offset: list[slice] | slice | None = None,
     ) -> tuple[torch.Tensor, Optional[TinyKvCache]]:
         """
         Args:
@@ -79,22 +79,14 @@ class Qwen2Attention(nn.Module):
         key_states = self.k_proj(hidden_states).view(hidden_shape)
         value_states = self.v_proj(hidden_states).view(hidden_shape)
 
-        # Calculate position offset for RoPE
-        # Priority: manual offset > cache.offset > 0
-        if offset is not None:
-            position_offset = offset
-        elif past_key_value is not None and hasattr(past_key_value, "offset"):
-            position_offset = past_key_value.offset
-        else:
-            position_offset = 0
-
         # rope
         query_states = self.rope(
             query_states,
-            offset=slice(position_offset, position_offset + input_shape[1]),
+            offset=offset,
         )
         key_states = self.rope(
-            key_states, offset=slice(position_offset, position_offset + input_shape[1])
+            key_states,
+            offset=offset,
         )
 
         # [B, S, num_heads, head_dim] -> [B, num_heads, S, head_dim]

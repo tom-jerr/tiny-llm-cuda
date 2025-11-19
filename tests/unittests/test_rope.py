@@ -3,7 +3,7 @@ import pytest
 import torch
 
 from src import RotaryEmbedding
-from tests.utils import *
+from tests.unittests.utils import *
 
 
 def RotaryEmbedding_helper(
@@ -18,11 +18,13 @@ def RotaryEmbedding_helper(
 
     device = torch.device("cuda") if deviceStr == "cuda" else torch.device("cpu")
     for _ in range(100):
-        user_layer = RotaryEmbedding(HEAD_DIM, MAX_SEQ_LEN, BASE, traditional=traditional).to(
-            device
-        )
+        user_layer = RotaryEmbedding(
+            HEAD_DIM, MAX_SEQ_LEN, BASE, traditional=traditional
+        ).to(device)
 
-        x = torch.rand(BATCH_SIZE, SEQ_LEN, NUM_HEADS, HEAD_DIM, device=device, dtype=precision)
+        x = torch.rand(
+            BATCH_SIZE, SEQ_LEN, NUM_HEADS, HEAD_DIM, device=device, dtype=precision
+        )
 
         if with_offset:
             input_pos = np.random.randint(0, MAX_SEQ_LEN - SEQ_LEN)
@@ -45,14 +47,18 @@ def RotaryEmbedding_helper(
 
 
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
-@pytest.mark.parametrize("with_offset", [True, False], ids=["with_offset", "without_offset"])
+@pytest.mark.parametrize(
+    "with_offset", [True, False], ids=["with_offset", "without_offset"]
+)
 @pytest.mark.parametrize("precision", PRECISIONS, ids=PRECISION_IDS)
 def test_task_1_rope_torch_traditional(device, with_offset, precision):
     RotaryEmbedding_helper(device, True, precision, with_offset)
 
 
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
-@pytest.mark.parametrize("with_offset", [True, False], ids=["with_offset", "without_offset"])
+@pytest.mark.parametrize(
+    "with_offset", [True, False], ids=["with_offset", "without_offset"]
+)
 @pytest.mark.parametrize("precision", PRECISIONS, ids=PRECISION_IDS)
 def test_task_2_rope_torch_non_traditional(device, with_offset, precision):
     RotaryEmbedding_helper(device, False, precision, with_offset)

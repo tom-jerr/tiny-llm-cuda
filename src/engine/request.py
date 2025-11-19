@@ -52,7 +52,7 @@ class Request:
         token = _step(
             self.model,
             self.prefill_tokens[:, self.offset : self.offset + tokens_to_prefill],
-            [self.offset],
+            [slice(self.offset, self.offset + tokens_to_prefill)],
             self.kv_cache,
         )
         self.offset += tokens_to_prefill
@@ -148,10 +148,10 @@ def batch_generate(
             for req in decode_requests:
                 if req is not None:
                     next_tokens.append(req.next_token)
-                    offsets.append(req.offset)
+                    offsets.append(slice(req.offset, req.offset + 1))
                 else:
                     next_tokens.append(0)
-                    offsets.append(0)
+                    offsets.append(slice(0, 1))
             next_tokens = torch.tensor(next_tokens)
             # decode(second param just one token)
             next_tokens = _step(model, next_tokens.reshape(-1, 1), offsets, kv_cache)

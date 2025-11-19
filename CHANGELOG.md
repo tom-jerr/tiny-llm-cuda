@@ -26,10 +26,10 @@
 - ✨ KV Cache 机制
   - 单请求 KV Cache (`TinyKvFullCache`)
   - 批处理 KV Cache (`BatchingKvCache`)
-- ✨ Continuous Batching 支持
+- ✨ Continuous Batching 支持(Padding 实现)
 - ✨ 多种激活函数
   - SiLU/Swish, GELU, ReLU, Leaky ReLU, Tanh, Sigmoid
-- ✨ RMSNorm 和 LayerNorm
+- ✨ RMSNorm
 - ✨ 采样策略
   - Greedy, Temperature, Top-p, Top-k
 - ✨ CUDA 扩展框架
@@ -39,26 +39,14 @@
   - ROADMAP.md
   - CONTRIBUTING.md
 - 🧪 测试套件
-  - 注意力机制测试
-  - 模型推理测试
-  - 批处理测试
-- 📝 使用示例
-  - 激活函数示例
-  - 注意力机制示例
+  - 单元测试
+  - 性能测试；gms8k 基准测试
 
 ### 已知问题
 
-- Flash Attention 尚未集成
+- Flash Attention 尚未集成，仅在 test 中进行测试
 - 仅支持单 GPU 推理
 - 文档需要进一步完善
-
-## [0.0.1] - 2025-11-01
-
-### 新增
-
-- 🎬 项目初始化
-- 📁 基础项目结构
-- 🔧 开发工具配置
 
 ---
 
@@ -69,48 +57,15 @@
 这是 MiniInfer 的首个公开版本，实现了：
 
 1. **完整的推理流程**
-
-   - 从 token 输入到生成输出的完整流程
    - 支持单请求和批处理推理
-
-2. **高效的 KV Cache**
-
-   - 避免重复计算，显著提升推理速度
-   - 批处理场景下的智能缓存管理
-
-3. **现代注意力机制**
-
-   - 支持 MHA 和 GQA
-   - 灵活的实现切换机制
-
-4. **模块化设计**
-
-   - 清晰的代码结构
-   - 易于扩展和定制
-
-5. **教育友好**
-   - 详细的代码注释
-   - 完整的文档和示例
+2. **实现 KV Cache**
+3. **支持 GQA**
 
 ### 性能指标 (0.1.0)
 
-测试环境: NVIDIA RTX 3090, Qwen2-1.5B
+测试环境: NVIDIA RTX 3080ti, Qwen2-1.5B
 
-- 单请求推理: ~30 tokens/s (with KV Cache)
-- 批处理推理 (batch_size=5): ~40 tokens/s
-- 内存占用: ~4GB (FP16)
-
-### 升级指南
-
-#### 从开发版升级到 0.1.0
-
-如果你之前克隆了开发版本：
-
-```bash
-git pull origin main
-pdm install
-pdm run build-ext  # 重新编译扩展
-```
+- :construction: 暂无
 
 ### 已知限制
 

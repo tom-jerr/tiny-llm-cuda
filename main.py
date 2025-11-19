@@ -15,7 +15,7 @@ parser.add_argument(
     default="Give me a short introduction to large language model.",
 )
 parser.add_argument("--solution", type=str, default="tinyllm")
-parser.add_argument("--loader", type=str, default="v1")
+parser.add_argument("--use_kvcache", type=bool, default=False)
 parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
 parser.add_argument("--sampler-temp", type=float, default=0)
 parser.add_argument("--sampler-top-p", type=float, default=0)
@@ -31,7 +31,7 @@ use_transformers = False
 if args.solution == "tinyllm":
     print("Using your tinyllm solution")
     from src import (
-        dispatch_model,
+        make_model,
         # speculative_generate,
         make_sampler,
         shortcut_name_to_full_name,
@@ -53,7 +53,7 @@ else:
 print(f"Loading model {args.model} ...")
 args.model = shortcut_name_to_full_name(args.model)
 tokenizer = AutoTokenizer.from_pretrained(args.model)
-model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.float16)
+model = AutoModelForCausalLM.from_pretrained(args.model, dtype=torch.float16)
 model.to(args.device)
 model.eval()
 
@@ -63,7 +63,7 @@ model.eval()
 if args.draft_model:
     print(f"Loading draft model {args.draft_model} ...")
     draft_tokenizer = AutoTokenizer.from_pretrained(args.draft_model)
-    draft_model = AutoModelForCausalLM.from_pretrained(args.draft_model, torch_dtype=torch.float16)
+    draft_model = AutoModelForCausalLM.from_pretrained(args.draft_model, dtype=torch.float16)
     draft_model.to(args.device)
     draft_model.eval()
 else:
@@ -111,14 +111,14 @@ if use_transformers:
     output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     print(output_text)
 else:
-    if args.loader == "v1":
+    if args.use_kvcache == True:
         print(f"Using simple_generate for {args.model}")
-        tinyllm_model = dispatch_model(args.model, model, version=1)
+        tinyllm_model = make_model(args.model, model)
         simple_generate(tinyllm_model, tokenizer, prompt, sampler=sampler_fn)
 
     elif args.loader == "v2":
         print(f"Using simple_generate_with_kv_cache for {args.model}")
-        tinyllm_model = dispatch_model(args.model, model, version=2)
+        tinyllm_model = make_model(args.model, model)
         simple_generate_with_kv_cache(tinyllm_model, tokenizer, prompt)
 
     else:

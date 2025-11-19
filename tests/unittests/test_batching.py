@@ -19,7 +19,9 @@ def rope_helper(deviceStr: str, traditional: bool, precision: torch.dtype):
 
     device = torch.device("cuda") if deviceStr == "cuda" else torch.device("cpu")
     for _ in range(100):
-        user_layer = RotaryEmbedding(HEAD_DIM, MAX_SEQ_LEN, BASE, traditional=traditional)
+        user_layer = RotaryEmbedding(
+            HEAD_DIM, MAX_SEQ_LEN, BASE, traditional=traditional
+        )
         x = torch.rand((BATCH_SIZE, SEQ_LEN, NUM_HEADS, HEAD_DIM), dtype=precision)
 
         input_pos = np.random.randint(0, MAX_SEQ_LEN - SEQ_LEN, size=BATCH_SIZE)
@@ -44,11 +46,15 @@ def rope_helper(deviceStr: str, traditional: bool, precision: torch.dtype):
 @pytest.mark.parametrize("device", DEVICES, ids=DEVICES_IDS)
 @pytest.mark.parametrize("traditional", [False, True], ids=["default", "traditional"])
 @pytest.mark.parametrize("precision", PRECISIONS, ids=PRECISION_IDS)
-def test_task_1_rope_multiple_offsets(device: str, traditional: bool, precision: torch.dtype):
+def test_task_1_rope_multiple_offsets(
+    device: str, traditional: bool, precision: torch.dtype
+):
     rope_helper(device, traditional, precision)
 
 
-def attention_helper(deviceStr: str, H_q, H, L, E, S, BATCH, use_flash_attention: bool = False):
+def attention_helper(
+    deviceStr: str, H_q, H, L, E, S, BATCH, use_flash_attention: bool = False
+):
     precision = torch.float32
     device = torch.device("cuda") if deviceStr == "cuda" else torch.device("cpu")
 
@@ -139,16 +145,21 @@ def helper_test_task_3(model_name: str, seq_len: int, iters: int = 1):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch_model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.float16,
-        device_map=device,
+        dtype=torch.float16,
+        device_map="auto",
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = Qwen2ModelV2(torch_model)
     for _ in range(iters):
-        cache = [BatchingKvCache(requests, max_seq_len) for _ in range(model.num_hidden_layers)]
+        cache = [
+            BatchingKvCache(requests, max_seq_len)
+            for _ in range(model.num_hidden_layers)
+        ]
         # Start each request at a staggered token index.
         staggered_start = [seq_len * i // requests for i in range(requests)]
-        inputs = torch.randint(0, tokenizer.vocab_size, (requests, seq_len), device=device)
+        inputs = torch.randint(
+            0, tokenizer.vocab_size, (requests, seq_len), device=device
+        )
         ref_outputs = torch_model(inputs).logits
 
         for offset in range(seq_len + staggered_start[-1]):
@@ -174,7 +185,9 @@ def helper_test_task_3(model_name: str, seq_len: int, iters: int = 1):
                     next_offsets.append(0)
 
             user_out = model(
-                inputs=torch.tensor(next_tokens, dtype=torch.int32, device=device).reshape(-1, 1),
+                inputs=torch.tensor(
+                    next_tokens, dtype=torch.int32, device=device
+                ).reshape(-1, 1),
                 offset=torch.tensor(next_offsets, dtype=torch.int32, device=device),
                 cache=cache,
             )
@@ -183,16 +196,26 @@ def helper_test_task_3(model_name: str, seq_len: int, iters: int = 1):
                 if 0 <= sidx < seq_len:
                     user_out_r = user_out[request_id, 0, :]
                     ref_out_r = ref_outputs[request_id, sidx, :]
-                    user_out_r = user_out_r - torch.logsumexp(user_out_r, dim=-1, keepdim=True)
-                    ref_out_r = ref_out_r - torch.logsumexp(ref_out_r, dim=-1, keepdim=True)
-                    assert_allclose(user_out_r, ref_out_r, precision=torch.float16, rtol=1e-1)
+                    user_out_r = user_out_r - torch.logsumexp(
+                        user_out_r, dim=-1, keepdim=True
+                    )
+                    ref_out_r = ref_out_r - torch.logsumexp(
+                        ref_out_r, dim=-1, keepdim=True
+                    )
+                    assert_allclose(
+                        user_out_r, ref_out_r, precision=torch.float16, rtol=1e-1
+                    )
 
 
-@pytest.mark.skipif(not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct model not found")
+@pytest.mark.skipif(
+    not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct model not found"
+)
 def test_task_3_qwen_2_05b():
     helper_test_task_3("Qwen/Qwen2-0.5B-Instruct", seq_len=3)
 
 
-@pytest.mark.skipif(not qwen_2_15b_model_exists(), reason="Qwen2-1.5B-Instruct model not found")
+@pytest.mark.skipif(
+    not qwen_2_15b_model_exists(), reason="Qwen2-1.5B-Instruct model not found"
+)
 def test_task_3_qwen_2_15b():
     helper_test_task_3("Qwen/Qwen2-1.5B-Instruct", seq_len=3)

@@ -5,9 +5,11 @@ import pytest
 
 def test(args):
     if args.func:
-        pytest.main(["-v", f"tests/test_{args.func}.py", "-W", "ignore"] + args.remainders)
+        pytest.main(
+            ["-v", f"tests/unittests/test_{args.func}.py", "-W", "ignore"] + args.remainders
+        )
     else:
-        pytest.main(["-v", "tests"] + args.remainders)
+        pytest.main(["-v", "tests/unittests/"] + args.remainders)
 
 
 def main():

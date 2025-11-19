@@ -9,6 +9,13 @@ from src.models.qwen2 import Qwen2Model
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="Qwen/Qwen2-0.5B-Instruct")
+parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"])
+parser.add_argument("--batch-size", type=int, default=5)
+parser.add_argument("--prefill-step", type=int, default=128)
+parser.add_argument("--max-seq-len", type=int, default=512)
+parser.add_argument("--max-new-tokens", type=int, default=100)
+
+args = parser.parse_args()
 
 shanghai_wikipedia = """
 Shanghai[a] is a direct-administered municipality and the most populous urban area in China. The city is located on the Chinese shoreline on the southern estuary of the Yangtze River, with the Huangpu River flowing through it. The population of the city proper is the second largest in the world after Chongqing, with around 24.87 million inhabitants in 2023, while the urban area is the most populous in China, with 29.87 million residents. As of 2022, the Greater Shanghai metropolitan area was estimated to produce a gross metropolitan product (nominal) of nearly 13 trillion RMB ($1.9 trillion).[13] Shanghai is one of the world's major centers for finance, business and economics, research, science and technology, manufacturing, transportation, tourism, and culture. The Port of Shanghai is the world's busiest container port.
@@ -38,14 +45,6 @@ prompts = [
 # shuffle prompts
 random.shuffle(prompts)
 
-parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"])
-parser.add_argument("--batch-size", type=int, default=5)
-parser.add_argument("--prefill-step", type=int, default=128)
-parser.add_argument("--max-seq-len", type=int, default=512)
-parser.add_argument("--max-new-tokens", type=int, default=100)
-
-args = parser.parse_args()
-
 
 def main():
     print(f"Using PyTorch version with model: {args.model}")
@@ -57,7 +56,7 @@ def main():
     # Load the transformers model
     torch_model = AutoModelForCausalLM.from_pretrained(
         args.model,
-        torch_dtype=torch.float16 if device.type == "cuda" else torch.float32,
+        dtype=torch.float16 if device.type == "cuda" else torch.float32,
         device_map=device,
     )
     tokenizer = AutoTokenizer.from_pretrained(args.model)

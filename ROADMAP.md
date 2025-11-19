@@ -16,36 +16,24 @@
 
 ## ✅ 已完成功能 (Phase 0 & 1)
 
-### 🎯 Phase 0: 基础设施 (100%)
-
 - [x] **项目结构搭建**
   - [x] 模块化目录设计
   - [x] PDM 包管理配置
   - [x] 开发工具链设置 (pytest, ruff)
 - [x] **基础算子实现**
   - [x] 线性层 (Linear)
-  - [x] 激活函数接口
-    - [x] SiLU / Swish
-    - [x] GELU (tanh & erf 近似)
-    - [x] ReLU / Leaky ReLU
-    - [x] Tanh / Sigmoid
+  - [x] 激活函数
   - [x] 归一化层
     - [x] RMSNorm
-    - [x] LayerNorm
 - [x] **CUDA 扩展框架**
   - [x] PyTorch C++ 扩展设置
   - [x] CUDA kernel 示例 (vector_add)
   - [x] Python bindings
 
-### 🚀 Phase 1: 核心推理能力 (90%)
-
 - [x] **注意力机制**
-  - [x] Scaled Dot-Product Attention
   - [x] Multi-Head Attention (MHA)
   - [x] Grouped Query Attention (GQA)
-  - [x] 因果遮罩 (Causal Mask)
-  - [x] 多实现方式支持
-  - [x] 统一接口设计
+  - [x] 因果掩码 (Causal Mask)
 - [x] **位置编码**
   - [x] Rotary Position Embedding (RoPE)
   - [x] 传统 RoPE 实现
@@ -54,70 +42,68 @@
 - [x] **KV Cache**
   - [x] 单请求完整 KV Cache (`TinyKvFullCache`)
   - [x] 批处理 KV Cache (`BatchingKvCache`)
-  - [x] 尾部对齐设计
-  - [x] 动态请求管理
-  - [x] Cache 更新与获取接口
 - [x] **模型实现**
-  - [x] Qwen2 完整架构
-  - [x] 权重加载与转换
-  - [x] FP16 精度支持
-  - [x] 模型配置系统
+  - [x] Qwen2
 - [x] **采样策略**
   - [x] Greedy Sampling
   - [x] Temperature Sampling
   - [x] Top-p (Nucleus) Sampling
   - [x] Top-k Sampling
-  - [x] 可组合的采样器
-
-- [ ] **测试覆盖**
-  - [x] 单元测试框架
-  - [x] 注意力机制测试
-  - [x] RoPE 测试
-  - [x] 模型推理测试
-  - [ ] 端到端集成测试 (70%)
-  - [ ] 性能基准测试
-
----
-
-## 🔄 Phase 2: 批处理与调度优化 (60%)
-
-**目标**: 实现高效的批处理推理和请求调度系统
-
-### 当前状态
 
 - [x] **Continuous Batching 基础**
   - [x] 请求管理系统 (`Request` 类)
   - [x] Prefill/Decode 阶段分离
   - [x] 动态请求添加/移除
   - [x] 批处理生成接口
-- [ ] **调度优化**
-  - [x] 基础批处理调度器
-  - [ ] 优先级队列调度
-  - [ ] 公平性调度策略
-  - [ ] 请求预加载 (Request Prefetching)
-  - [ ] 自适应批大小调整
-
-### 待实现
-
-- [ ] **内存管理优化** (Q1 2026)
-  - [ ] 内存池管理
-  - [ ] KV Cache 内存预分配
-  - [ ] 动态内存回收
-  - [ ] OOM 处理策略
-
-- [ ] **调度策略增强** (Q1 2026)
-  - [ ] First-Come-First-Serve (FCFS)
-  - [ ] Shortest Job First (SJF)
-  - [ ] 优先级调度
-  - [ ] 多队列调度
 
 ---
 
-## 🔥 Phase 3: 高级推理优化 (30%)
+## 待实现功能
 
-**目标**: 实现现代 LLM 推理系统的关键优化技术
+### PagedAttention 实现 (Q4 2025 - Q1 2026)
 
-### 3.1 Flash Attention 集成 (Q1 2026)
+**优先级**: ⭐⭐⭐⭐⭐
+
+灵感来自 vLLM 和 SGLang，通过分页管理 KV Cache 以及 Radix Cache 显著提升内存利用率。
+
+- [ ] **核心实现**
+  - [ ] 页表管理系统
+  - [ ] 物理/逻辑页映射
+  - [ ] KV Cache 分页存储
+  - [ ] Copy-on-Write 机制
+
+- [ ] **PagedAttention Kernel**
+  - [ ] CUDA kernel 实现
+  - [ ] 非连续内存访问优化
+  - [ ] 与 Flash Attention 结合
+
+- [ ] **前缀识别与匹配**
+  - [ ] 前缀树 (Trie) 结构
+  - [ ] 最长公共前缀匹配
+
+- [ ] **Cache 管理**
+  - [ ] 前缀 KV Cache 存储
+  - [ ] LRU 淘汰策略
+  - [ ] 前缀共享
+
+### 推测解码 (Speculative Decoding) (Q1 - Q2 2026)
+
+**优先级**: ⭐⭐⭐⭐⭐
+
+使用小模型加速大模型推理。
+
+- [ ] **基础实现**
+  - [ ] Draft 模型推理
+  - [ ] Target 模型验证
+  - [ ] Token 接受/拒绝逻辑
+  - [ ] 多 token 并行验证
+
+- [ ] **优化策略**
+  - [ ] 自适应草稿长度
+  - [ ] Draft 模型选择策略
+  - [ ] 树形推测 (Tree Attention)
+
+### Flash Attention 集成 (Q4 2025 - Q1 2026)
 
 **优先级**: ⭐⭐⭐⭐⭐
 
@@ -133,52 +119,7 @@
   - [ ] 寄存器优化
   - [ ] 与 PyTorch 实现性能对比
 
-**预期收益**: 2-4x 推理速度提升，降低内存占用
-
-### 3.2 PagedAttention 实现 (Q2 2026)
-
-**优先级**: ⭐⭐⭐⭐⭐
-
-灵感来自 vLLM，通过分页管理 KV Cache 显著提升内存利用率。
-
-- [ ] **核心实现**
-  - [ ] 页表管理系统
-  - [ ] 物理/逻辑页映射
-  - [ ] KV Cache 分页存储
-  - [ ] Copy-on-Write 机制
-
-- [ ] **PagedAttention Kernel**
-  - [ ] CUDA kernel 实现
-  - [ ] 非连续内存访问优化
-  - [ ] 与 Flash Attention 结合
-
-- [ ] **调度器集成**
-  - [ ] 页分配策略
-  - [ ] 页回收机制
-  - [ ] 多请求页共享
-
-**预期收益**: 3-10x 内存利用率提升，支持更大批处理
-
-### 3.3 推测解码 (Speculative Decoding) (Q2 2026)
-
-**优先级**: ⭐⭐⭐⭐
-
-使用小模型加速大模型推理。
-
-- [ ] **基础实现**
-  - [ ] Draft 模型推理
-  - [ ] Target 模型验证
-  - [ ] Token 接受/拒绝逻辑
-  - [ ] 多 token 并行验证
-
-- [ ] **优化策略**
-  - [ ] 自适应草稿长度
-  - [ ] Draft 模型选择策略
-  - [ ] 树形推测 (Tree Attention)
-
-**预期收益**: 2-3x 推理速度提升（特定场景）
-
-### 3.4 量化支持 (Q2-Q3 2026)
+### 量化支持 (Q2 2026)
 
 **优先级**: ⭐⭐⭐⭐
 
@@ -197,33 +138,7 @@
   - [ ] FP8 E4M3/E5M2 格式
   - [ ] 混合精度推理
 
-**预期收益**: 2-4x 内存减少，1.5-2x 速度提升
-
-### 3.5 Prefix Caching (Q3 2026)
-
-**优先级**: ⭐⭐⭐
-
-缓存常用 prompt 前缀，避免重复计算。
-
-- [ ] **前缀识别与匹配**
-  - [ ] 前缀哈希
-  - [ ] 前缀树 (Trie) 结构
-  - [ ] 最长公共前缀匹配
-
-- [ ] **Cache 管理**
-  - [ ] 前缀 KV Cache 存储
-  - [ ] LRU 淘汰策略
-  - [ ] 前缀共享
-
-**预期收益**: 显著降低相似请求的延迟
-
----
-
-## 🌐 Phase 4: 分布式推理 (10%)
-
-**目标**: 支持多 GPU 和多节点推理
-
-### 4.1 张量并行 (Tensor Parallelism) (Q2 2026)
+### 张量并行 (Tensor Parallelism) (Q1 - Q2 2026)
 
 **优先级**: ⭐⭐⭐⭐⭐
 
@@ -246,9 +161,7 @@
 
 **技术栈**: `torch.distributed`, NCCL
 
-**预期收益**: 支持超大模型推理 (70B+)
-
-### 4.2 流水线并行 (Pipeline Parallelism) (Q3 2026)
+### 流水线并行 (Pipeline Parallelism) (Q2 - Q3 2026)
 
 **优先级**: ⭐⭐⭐⭐
 
@@ -263,9 +176,7 @@
   - [ ] 气泡时间优化
   - [ ] 内存优化
 
-**预期收益**: 提升大模型推理吞吐量
-
-### 4.3 专家混合并行 (Expert Parallelism) (Q4 2026)
+### 专家混合并行 (Expert Parallelism) (Q3 - Q4 2026)
 
 **优先级**: ⭐⭐⭐
 
@@ -278,11 +189,9 @@
 
 ---
 
-## 🔧 Phase 5: 生产级特性 (20%)
+## 后续 Serving 支持 (Q2 - Q4 2026)
 
-**目标**: 使系统达到生产环境可用标准
-
-### 5.1 推理服务 (Serving) (Q2-Q3 2026)
+### 推理服务 (Serving)
 
 - [ ] **HTTP API**
   - [ ] RESTful API 设计
@@ -316,7 +225,7 @@
   - [ ] Prometheus 集成
   - [ ] Grafana Dashboard
 
-### 5.3 部署支持 (Q3-Q4 2026)
+### 5.3 部署支持 (Q3 - Q4 2026)
 
 - [ ] **容器化**
   - [ ] Docker 镜像
@@ -335,125 +244,42 @@
 
 ---
 
-## 🎨 Phase 6: 扩展功能 (Future)
-
-### 6.1 更多模型架构
-
-- [ ] **Llama 系列**
-  - [ ] Llama 2/3
-  - [ ] Code Llama
-- [ ] **其他架构**
-  - [ ] GPT-NeoX
-  - [ ] Mistral
-  - [ ] Mixtral (MoE)
-  - [ ] Yi 系列
-
-### 6.2 多模态支持
-
-- [ ] **视觉语言模型**
-  - [ ] CLIP 集成
-  - [ ] LLaVA 支持
-  - [ ] Qwen-VL
-
-- [ ] **语音模型**
-  - [ ] Whisper 集成
-  - [ ] 语音合成
-
-### 6.3 高级特性
-
-- [ ] **长上下文支持**
-  - [ ] Sparse Attention
-  - [ ] Ring Attention
-  - [ ] StreamingLLM
-
-- [ ] **高效采样**
-  - [ ] Beam Search
-  - [ ] Diverse Beam Search
-  - [ ] Contrastive Search
-
----
-
 ## 📅 时间线
 
 ```
-2025 Q4 - 2026 Q1: Phase 2-3 (批处理优化 + Flash Attention)
-├── 2025 Q4: Continuous Batching 优化完成
-├── 2026 Q1: Flash Attention 集成
-└── 2026 Q1: PagedAttention 基础实现
+2025 Q4: Phase 2 - 核心优化基础
+├── 🔄 Continuous Batching 优化持续进行
+├── 🚀 Flash Attention 集成启动
+└── 🚀 PagedAttention 基础实现启动
 
-2026 Q2: Phase 3-4 (高级优化 + 分布式)
-├── PagedAttention 完整实现
-├── Tensor Parallelism 基础支持
-├── Speculative Decoding
-└── INT8 量化
+2026 Q1: Phase 2-3 - 高性能推理优化
+├── ✅ Flash Attention 集成完成
+├── ✅ PagedAttention 基础实现完成
+├── 🚀 Tensor Parallelism 启动
+└── 🚀 推测解码启动
 
-2026 Q3: Phase 4-5 (分布式 + 生产特性)
-├── Pipeline Parallelism
-├── 推理服务 API
-├── 监控系统
-└── INT4 量化
+2026 Q2: Phase 3-4 - 分布式与高级优化
+├── ✅ PagedAttention 完整实现
+├── ✅ Tensor Parallelism 基础支持
+├── 🔄 Speculative Decoding 持续优化
+├── 🚀 Pipeline Parallelism 启动
+├── 🚀 INT8 量化启动
+└── 🚀 推理服务 API 启动
 
-2026 Q4: Phase 5-6 (生产就绪 + 扩展)
-├── 部署工具链
-├── 更多模型支持
-└── 长上下文优化
+2026 Q3: Phase 4-5 - 生产特性
+├── ✅ Pipeline Parallelism 完成
+├── ✅ 推理服务 API 完成
+├── ✅ 监控系统完成
+├── 🔄 INT4 量化
+├── 🚀 Expert Parallelism 启动
+└── 🚀 部署工具链启动
+
+2026 Q4: Phase 5-6 - 生产就绪与扩展
+├── ✅ 部署工具链完成
+├── ✅ Expert Parallelism 完成
+├── 🔄 更多模型支持
+└── 🔄 长上下文优化
 ```
-
----
-
-## 🎯 里程碑
-
-### Milestone 1: 高性能单 GPU 推理 (2026 Q1)
-
-- ✅ 基础推理功能
-- ✅ Continuous Batching
-- 🔄 Flash Attention
-- 🔄 PagedAttention
-
-### Milestone 2: 多 GPU 分布式推理 (2026 Q2-Q3)
-
-- Tensor Parallelism
-- Pipeline Parallelism
-- 推理服务 API
-
-### Milestone 3: 生产级部署 (2026 Q3-Q4)
-
-- 完整的监控系统
-- 容器化部署
-- 性能优化完成
-- 文档完善
-
-### Milestone 4: 全功能推理引擎 (2026 Q4+)
-
-- 多模型架构支持
-- 多模态能力
-- 长上下文支持
-- 社区生态建设
-
----
-
-## 🤔 技术债务与优化
-
-### 代码质量
-
-- [ ] 添加类型注解 (Type Hints) 覆盖率达到 90%
-- [ ] 文档字符串完善
-- [ ] 代码注释优化
-- [ ] 重构复杂模块
-
-### 性能优化
-
-- [ ] Profiling 与性能分析
-- [ ] 内存泄漏检查
-- [ ] CUDA kernel 优化
-- [ ] 通信优化
-
-### 测试
-
-- [ ] 单元测试覆盖率 > 80%
-- [ ] 集成测试完善
-- [ ] 性能回归测试
-- [ ] 分布式测试
 
 ---
 
@@ -469,18 +295,8 @@
 
 ### 开源项目
 
-- **vLLM** - PagedAttention, Continuous Batching
-- **TensorRT-LLM** - NVIDIA 推理优化
-- **DeepSpeed-Inference** - 分布式推理
-- **Flash Attention** - 注意力优化
-- **tiny-llm** - 清晰的实现参考
-- **nano-vllm** - 批处理调度参考
-
-### 技术博客
-
-- Hugging Face Blog - Transformers & Inference
-- NVIDIA Developer Blog - CUDA & TensorRT
-- PyTorch Blog - Distributed Training
+- **tiny-llm** - 最初的项目框架代码参考
+- **nano-vllm** - 重构后项目框架代码参考
 
 ---
 
@@ -490,11 +306,10 @@
 
 ### 如何贡献
 
-1. 选择一个感兴趣的功能（标记为 `[ ]`）
-2. 在 Issue 中声明你要实现该功能
-3. Fork 项目并创建分支
-4. 实现功能并添加测试
-5. 提交 PR，更新 ROADMAP 状态
+1. 在 Issue 中声明你要实现该功能
+2. Fork 项目并创建分支
+3. 实现功能并添加测试
+4. 提交 PR，更新 ROADMAP 状态
 
 ### 优先级说明
 
@@ -520,6 +335,6 @@
 
 **让我们一起构建一个强大的 LLM 推理引擎！** 🚀
 
-更新时间: 2025-11-16
+更新时间: 2025-11-19
 
 </div>

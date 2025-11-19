@@ -105,7 +105,6 @@ Closes #123
 
 - 为新功能添加单元测试
 - 确保所有测试通过
-- 测试覆盖率尽量达到 80%+
 
 运行测试：
 
@@ -124,14 +123,6 @@ python tests/test_your_feature.py
 ### 优先级高的任务
 
 查看 [ROADMAP.md](./ROADMAP.md) 了解项目规划，优先贡献标记为高优先级的功能。
-
-当前急需贡献的领域：
-
-- 🔥 Flash Attention 集成
-- 🔥 PagedAttention 实现
-- 🔥 张量并行支持
-- 📚 文档完善
-- 🧪 测试覆盖率提升
 
 ### 寻找任务
 
@@ -226,23 +217,6 @@ python tests/test_your_feature.py
 - 改进现有文档的清晰度
 - 添加使用示例
 - 翻译文档（欢迎英文版本）
-
-## 🏗️ 项目结构
-
-了解项目结构有助于贡献：
-
-```
-src/
-├── layers/          # 神经网络层（注意力、激活等）
-├── models/          # 模型实现（Qwen2 等）
-├── cache/           # KV Cache 和批处理逻辑
-├── utils/           # 工具函数
-└── extensions/      # CUDA 扩展
-
-tests/               # 测试文件
-examples/            # 使用示例
-docs/                # 文档
-```
 
 ## 🤝 行为准则
 
